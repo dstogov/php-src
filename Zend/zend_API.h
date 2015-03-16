@@ -1050,7 +1050,7 @@ ZEND_API void zend_unexpected_null_paramer(int num, zend_expected_type expected_
 
 /*
  * The flags below allow to modify the behavior of the ZPP layer.
- * Theer settiongs implement the ruleset proposed in
+ * Their settings implement the ruleset proposed in
  * https://wiki.php.net/rfc/coercive_sth
  */
 
