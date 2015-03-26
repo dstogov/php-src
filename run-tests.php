@@ -261,11 +261,11 @@ More .INIs  : " , (function_exists(\'php_ini_scanned_files\') ? str_replace("\n"
 	$info_params = array();
 	settings2array($ini_overwrites, $info_params);
 	settings2params($info_params);
-	$php_info = `$php $pass_options $info_params "$info_file"`;
+	$php_info = `$php $pass_options $info_params -d opcache.permanent_cache=  "$info_file"`;
 	define('TESTED_PHP_VERSION', `$php -n -r "echo PHP_VERSION;"`);
 
 	if ($php_cgi && $php != $php_cgi) {
-		$php_info_cgi = `$php_cgi $pass_options $info_params -q "$info_file"`;
+		$php_info_cgi = `$php_cgi $pass_options $info_params -d opcache.permanent_cache=  -q "$info_file"`;
 		$php_info_sep = "\n---------------------------------------------------------------------";
 		$php_cgi_info = "$php_info_sep\nPHP         : $php_cgi $php_info_cgi$php_info_sep";
 	} else {
@@ -276,7 +276,7 @@ More .INIs  : " , (function_exists(\'php_ini_scanned_files\') ? str_replace("\n"
 
 	// load list of enabled extensions
 	save_text($info_file, '<?php echo join(",", get_loaded_extensions()); ?>');
-	$exts_to_test = explode(',',`$php $pass_options $info_params "$info_file"`);
+	$exts_to_test = explode(',',`$php $pass_options $info_params -d opcache.permanent_cache= "$info_file"`);
 	// check for extensions that need special handling and regenerate
 	$info_params_ex = array(
 		'session' => array('session.auto_start=0'),
@@ -1519,7 +1519,7 @@ TEST $file
 
 			junit_start_timer($shortname);
 
-			$output = system_with_timeout("$extra $php $pass_options -q $ini_settings -d display_errors=0 \"$test_skipif\"", $env);
+			$output = system_with_timeout("$extra $php $pass_options -q $ini_settings -d opcache.permanent_cache= -d display_errors=0 \"$test_skipif\"", $env);
 
 			junit_finish_timer($shortname);
 
@@ -1835,7 +1835,7 @@ COMMAND $cmd
 				settings2params($clean_params);
 				$extra = substr(PHP_OS, 0, 3) !== "WIN" ?
 					"unset REQUEST_METHOD; unset QUERY_STRING; unset PATH_TRANSLATED; unset SCRIPT_FILENAME; unset REQUEST_METHOD;": "";
-				system_with_timeout("$extra $php $pass_options -q $clean_params \"$test_clean\"", $env);
+				system_with_timeout("$extra $php $pass_options -q $clean_params -d opcache.permanent_cache= \"$test_clean\"", $env);
 			}
 
 			if (!$cfg['keep']['clean']) {

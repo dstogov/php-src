@@ -215,6 +215,7 @@ typedef struct _zend_accel_directives {
 	zend_long           max_file_size;
 	zend_long           interned_strings_buffer;
 	char          *restrict_api;
+	char          *permanent_cache;
 } zend_accel_directives;
 
 typedef struct _zend_accel_globals {

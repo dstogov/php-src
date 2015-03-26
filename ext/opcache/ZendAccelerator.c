@@ -26,6 +26,7 @@
 #include "zend_compile.h"
 #include "ZendAccelerator.h"
 #include "zend_persist.h"
+#include "zend_permanent.h"
 #include "zend_shared_alloc.h"
 #include "zend_accelerator_module.h"
 #include "zend_accelerator_blacklist.h"
@@ -896,29 +897,6 @@ int validate_timestamp_and_record(zend_persistent_script *persistent_script, zen
 	}
 }
 
-static unsigned int zend_accel_script_checksum(zend_persistent_script *persistent_script)
-{
-	signed char *mem = (signed char*)persistent_script->mem;
-	size_t size = persistent_script->size;
-	size_t persistent_script_check_block_size = ((char *)&(persistent_script->dynamic_members)) - (char *)persistent_script;
-	unsigned int checksum = ADLER32_INIT;
-
-	if (mem < (signed char*)persistent_script) {
-		checksum = zend_adler32(checksum, mem, (signed char*)persistent_script - mem);
-		size -= (signed char*)persistent_script - mem;
-		mem  += (signed char*)persistent_script - mem;
-	}
-
-	zend_adler32(checksum, mem, persistent_script_check_block_size);
-	mem  += sizeof(*persistent_script);
-	size -= sizeof(*persistent_script);
-
-	if (size > 0) {
-		checksum = zend_adler32(checksum, mem, size);
-	}
-	return checksum;
-}
-
 /* Instead of resolving full real path name each time we need to identify file,
  * we create a key that consist from requested file name, current working
  * directory, current include_path, etc */
@@ -1250,6 +1228,12 @@ static zend_persistent_script *cache_script_in_shared_memory(zend_persistent_scr
 
 	zend_shared_alloc_unlock();
 
+	if (ZCG(accel_directives).permanent_cache) {
+		SHM_PROTECT();
+		zend_permanent_script_store(new_persistent_script);
+		SHM_UNPROTECT();
+	}
+
 	*from_shared_memory = 1;
 	return new_persistent_script;
 }
@@ -1557,6 +1541,10 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
 	}
 
 	SHM_UNPROTECT();
+
+	if (ZCG(accel_directives).permanent_cache && !persistent_script) {
+		persistent_script = zend_permanent_script_load(file_handle->opened_path);
+	}
 
 	/* If script is found then validate_timestamps if option is enabled */
 	if (persistent_script && ZCG(accel_directives).validate_timestamps) {

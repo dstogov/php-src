@@ -241,6 +241,27 @@ static ZEND_INI_MH(OnEnable)
 	}
 }
 
+static ZEND_INI_MH(OnUpdatePermanentCache)
+{
+	if (new_value) {
+		if (!new_value->len) {
+			new_value = NULL;
+		} else {
+			struct stat buf;
+
+		    if (!IS_ABSOLUTE_PATH(new_value->val, new_value->len) ||
+			    stat(new_value->val, &buf) != 0 ||
+			    !S_ISDIR(buf.st_mode) ||
+				access(new_value->val, R_OK | W_OK | X_OK) != 0) {
+				zend_accel_error(ACCEL_LOG_WARNING, "opcache.permanent_cache must be a full path of accessable directory.\n");
+				new_value = NULL;
+			}
+		}
+	}
+	OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+	return SUCCESS;
+}
+
 ZEND_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("opcache.enable"             , "1", PHP_INI_ALL,    OnEnable,     enabled                             , zend_accel_globals, accel_globals)
 	STD_PHP_INI_BOOLEAN("opcache.use_cwd"            , "1", PHP_INI_SYSTEM, OnUpdateBool, accel_directives.use_cwd            , zend_accel_globals, accel_globals)
@@ -276,6 +297,8 @@ ZEND_INI_BEGIN()
 #ifdef ZEND_WIN32
 	STD_PHP_INI_ENTRY("opcache.mmap_base", NULL, PHP_INI_SYSTEM,	OnUpdateString,	                             accel_directives.mmap_base,                 zend_accel_globals, accel_globals)
 #endif
+
+	STD_PHP_INI_ENTRY("opcache.permanent_cache"          , NULL  , PHP_INI_SYSTEM, OnUpdatePermanentCache,	         accel_directives.permanent_cache,   zend_accel_globals, accel_globals)
 ZEND_INI_END()
 
 static int filename_is_in_cache(zend_string *filename)

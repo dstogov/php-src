@@ -929,3 +929,26 @@ unsigned int zend_adler32(unsigned int checksum, signed char *buf, uint len)
 
 	return (s2 << 16) | s1;
 }
+
+unsigned int zend_accel_script_checksum(zend_persistent_script *persistent_script)
+{
+	signed char *mem = (signed char*)persistent_script->mem;
+	size_t size = persistent_script->size;
+	size_t persistent_script_check_block_size = ((char *)&(persistent_script->dynamic_members)) - (char *)persistent_script;
+	unsigned int checksum = ADLER32_INIT;
+
+	if (mem < (signed char*)persistent_script) {
+		checksum = zend_adler32(checksum, mem, (signed char*)persistent_script - mem);
+		size -= (signed char*)persistent_script - mem;
+		mem  += (signed char*)persistent_script - mem;
+	}
+
+	zend_adler32(checksum, mem, persistent_script_check_block_size);
+	mem  += sizeof(*persistent_script);
+	size -= sizeof(*persistent_script);
+
+	if (size > 0) {
+		checksum = zend_adler32(checksum, mem, size);
+	}
+	return checksum;
+}
