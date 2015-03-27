@@ -729,7 +729,7 @@ static accel_time_t zend_get_file_handle_timestamp_win(zend_file_handle *file_ha
 }
 #endif
 
-static accel_time_t zend_get_file_handle_timestamp(zend_file_handle *file_handle, size_t *size)
+accel_time_t zend_get_file_handle_timestamp(zend_file_handle *file_handle, size_t *size)
 {
 	zend_stat_t statbuf;
 #ifdef ZEND_WIN32
@@ -1544,7 +1544,7 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
 	SHM_UNPROTECT();
 
 	if (ZCG(accel_directives).permanent_cache && !persistent_script) {
-		persistent_script = zend_permanent_script_load(file_handle->opened_path);
+		persistent_script = zend_permanent_script_load(file_handle);
 	}
 
 	/* If script is found then validate_timestamps if option is enabled */

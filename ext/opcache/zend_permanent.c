@@ -68,11 +68,13 @@ static const uint32_t uninitialized_bucket[-HT_MIN_MASK] =
 	{HT_INVALID_IDX, HT_INVALID_IDX};
 
 typedef struct _zend_permanent_metainfo {
-	char     magic[8];
-	size_t   mem_size;
-	size_t   str_size;
-	size_t   script_offset;
-	uint32_t checksum;
+	char         magic[8];
+	char         system_id[32];
+	size_t       mem_size;
+	size_t       str_size;
+	size_t       script_offset;
+	accel_time_t timestamp;
+	uint32_t     checksum;
 } zend_permanent_metainfo;
 
 static int zend_permanent_mkdir(char *filename, size_t start)
@@ -559,9 +561,11 @@ static void zend_permanent_serialize(zend_persistent_script  *script,
 	zend_persistent_script *new_script;
 
 	memcpy(info->magic, "OPCACHE", 8);
+	memcpy(info->system_id, ZCG(system_id), 32);
 	info->mem_size = script->size;
 	info->str_size = 0;
 	info->script_offset = (char*)script - (char*)script->mem;
+	info->timestamp = script->timestamp;
 
 	memcpy(buf, script->mem, script->size);
 
@@ -1031,8 +1035,9 @@ static void zend_permanent_unserialize(zend_persistent_script  *script,
 	UNSERIALIZE_PTR(script->arena_mem);
 }
 
-zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
+zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle)
 {
+	zend_string *full_path = file_handle->opened_path;
 	size_t len;
 	int fd;
 	char *filename;
@@ -1041,6 +1046,9 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 	zend_accel_hash_entry *bucket;
 	void *mem, *buf;
 
+	if (!full_path) {
+		return NULL;
+	}
 	len = strlen(ZCG(accel_directives).permanent_cache);
 	filename = emalloc(len + 33 + full_path->len + sizeof(SUFFIX));
 	memcpy(filename, ZCG(accel_directives).permanent_cache, len);
@@ -1057,17 +1065,36 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 
 	if (read(fd, &info, sizeof(info)) != sizeof(info)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
+		close(fd);
+		unlink(filename);
 		efree(filename);
 		return NULL;
 	}
 
-	//TODO: verify info
+	/* verify header */
+	if (memcmp(info.magic, "OPCACHE", 8) != 0 ||
+	    memcmp(info.system_id, ZCG(system_id), 32) != 0) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
+		close(fd);
+		unlink(filename);
+		efree(filename);
+		return NULL;
+	}
+
+	/* verify timestamp */
+	if (zend_get_file_handle_timestamp(file_handle, NULL) != info.timestamp) {
+		close(fd);
+		unlink(filename);
+		efree(filename);
+		return NULL;
+	}
 
 	mem = emalloc(info.mem_size + info.str_size);
 
 	if (read(fd, mem, info.mem_size + info.str_size) != (ssize_t)(info.mem_size + info.str_size)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
 		close(fd);
+		unlink(filename);
 		efree(mem);
 		efree(filename);
 		return NULL;

@@ -20,6 +20,6 @@
 #define ZEND_PERMANENT_H
 
 int zend_permanent_script_store(zend_persistent_script *script);
-zend_persistent_script *zend_permanent_script_load(zend_string *filename);
+zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle);
 
 #endif /* ZEND_PERMANENT_H */
