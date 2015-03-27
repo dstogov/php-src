@@ -556,8 +556,6 @@ static void zend_permanent_serialize(zend_persistent_script  *script,
 {
 	zend_persistent_script *new_script;
 
-	zend_shared_alloc_clear_xlat_table();
-
 	memcpy(info->magic, "OPCACHE", 8);
 	info->mem_size = script->size;
 	info->str_size = 0;
@@ -616,7 +614,10 @@ int zend_permanent_script_store(zend_persistent_script *script)
 
 	ZCG(mem) = zend_string_alloc(0, 0);
 
+	//TODO: lock is not necessary but we need xlat_table???
+	zend_shared_alloc_lock();
 	zend_permanent_serialize(script, &info, buf);
+	zend_shared_alloc_unlock();
 
 	vec[0].iov_base = &info;
 	vec[0].iov_len = sizeof(info);
