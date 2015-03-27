@@ -1081,7 +1081,8 @@ zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle
 	}
 
 	/* verify timestamp */
-	if (zend_get_file_handle_timestamp(file_handle, NULL) != info.timestamp) {
+	if (ZCG(accel_directives).validate_timestamps &&
+	    zend_get_file_handle_timestamp(file_handle, NULL) != info.timestamp) {
 		close(fd);
 		unlink(filename);
 		efree(filename);
