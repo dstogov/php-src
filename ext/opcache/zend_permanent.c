@@ -127,9 +127,11 @@ static void *zend_permanent_serialize_interned(zend_string             *str,
 	ret = (void*)(info->str_size | Z_UL(1));
 	zend_shared_alloc_register_xlat_entry(str, ret);
 	if (info->str_size + len > ((zend_string*)ZCG(mem))->len) {
-		//TODO: improve reallocation granularity???
 		size_t new_len = info->str_size + len;
-		ZCG(mem) = (void*)zend_string_realloc((zend_string*)ZCG(mem), new_len, 0);
+		ZCG(mem) = (void*)zend_string_realloc(
+			(zend_string*)ZCG(mem),
+			((_STR_HEADER_SIZE + 1 + new_len + 4095) & ~0xfff) - (_STR_HEADER_SIZE + 1),
+			0);
 	}
 	memcpy(((zend_string*)ZCG(mem))->val + info->str_size, str, len);
 	info->str_size += len;
@@ -612,7 +614,7 @@ int zend_permanent_script_store(zend_persistent_script *script)
 	mem = buf = emalloc(script->size);
 #endif
 
-	ZCG(mem) = zend_string_alloc(0, 0);
+	ZCG(mem) = zend_string_alloc(4096 - (_STR_HEADER_SIZE + 1), 0);
 
 	//TODO: lock is not necessary but we need xlat_table???
 	zend_shared_alloc_lock();
