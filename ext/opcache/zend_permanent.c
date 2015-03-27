@@ -620,10 +620,9 @@ int zend_permanent_script_store(zend_persistent_script *script)
 
 	ZCG(mem) = zend_string_alloc(4096 - (_STR_HEADER_SIZE + 1), 0);
 
-	//TODO: lock is not necessary but we need xlat_table???
-	zend_shared_alloc_lock();
+	zend_shared_alloc_init_xlat_table();
 	zend_permanent_serialize(script, &info, buf);
-	zend_shared_alloc_unlock();
+	zend_shared_alloc_destroy_xlat_table();
 
 	vec[0].iov_base = &info;
 	vec[0].iov_len = sizeof(info);
