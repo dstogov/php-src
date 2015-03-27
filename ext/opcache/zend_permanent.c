@@ -35,7 +35,7 @@
 #define IS_SERIALIZED_INTERNED(ptr) \
 	((size_t)(ptr) & Z_UL(1))
 #define IS_SERIALIZED(ptr) \
-	((char*)(ptr) >= 0 && (char*)(ptr) < (char*)script->size)
+	((char*)(ptr) < (char*)script->size)
 #define IS_UNSERIALIZED(ptr) \
 	(((char*)(ptr) >= (char*)script->mem && (char*)(ptr) < (char*)script->mem + script->size) || \
 	 IS_ACCEL_INTERNED(ptr))
@@ -145,6 +145,7 @@ static void *zend_permanent_unserialize_interned(zend_string             *str,
 
 	str = (zend_string*)((char*)info->u.chars + ((size_t)(str) & ~Z_UL(1)));
 	ret = accel_new_interned_string(str);
+	//TODO: what if it fails ???
 	ZEND_ASSERT(ret && ret != str);
 	return ret;
 }
@@ -595,14 +596,14 @@ int zend_permanent_script_store(zend_persistent_script *script)
 	memcpy(filename + len + script->full_path->len, SUFFIX, sizeof(SUFFIX));
 
 	if (zend_permanent_mkdir(filename, len) != SUCCESS) {
-		//TODO: can't create directory
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create directory for file '%s'\n", filename);
 		efree(filename);
 		return FAILURE;
 	}
 
 	fd = open(filename, O_CREAT | O_EXCL | O_RDWR, S_IRWXU);
 	if (fd < 0) {
-		//TODO: can't create cache file
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create file '%s'\n", filename);
 		efree(filename);
 		return FAILURE;
 	}
@@ -632,8 +633,8 @@ int zend_permanent_script_store(zend_persistent_script *script)
 	info.u.checksum = zend_adler32(ADLER32_INIT, buf, script->size);
 	info.u.checksum = zend_adler32(info.u.checksum, (signed char*)strings->val, info.str_size);
 
-	if (writev(fd, vec, 3) != sizeof(info) + script->size + info.str_size) {
-		//TODO: can't write to cache file
+	if (writev(fd, vec, 3) != (ssize_t)(sizeof(info) + script->size + info.str_size)) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot write to file '%s'\n", filename);
 		zend_string_release(strings);
 		efree(mem);
 		unlink(filename);
@@ -1061,13 +1062,12 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
-		//TODO: can't create cache file
 		efree(filename);
 		return NULL;
 	}
 
 	if (read(fd, &info, sizeof(info)) != sizeof(info)) {
-		//TODO: can't read cache file
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
 		efree(filename);
 		return NULL;
 	}
@@ -1076,8 +1076,8 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 
 	mem = emalloc(info.mem_size + info.str_size);
 
-	if (read(fd, mem, info.mem_size + info.str_size) != info.mem_size + info.str_size) {
-		//TODO: can't read cache file
+	if (read(fd, mem, info.mem_size + info.str_size) != (ssize_t)(info.mem_size + info.str_size)) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
 		close(fd);
 		efree(mem);
 		efree(filename);
@@ -1087,7 +1087,7 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 
 	/* verify checksum */
 	if (zend_adler32(ADLER32_INIT, mem, info.mem_size + info.str_size) != info.u.checksum) {
-		//TODO: wrong checksum
+		zend_accel_error(ACCEL_LOG_WARNING, "corrupted file '%s'\n", filename);
 		unlink(filename);
 		efree(mem);
 		efree(filename);
@@ -1112,7 +1112,9 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 	}
 
 	if (zend_accel_hash_is_full(&ZCSG(hash))) {
-		//TODO: No more entries in hash table!
+		zend_accel_error(ACCEL_LOG_DEBUG, "No more entries in hash table!");
+		ZSMMG(memory_exhausted) = 1;
+		zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_HASH);
 		zend_shared_alloc_unlock();
 		efree(mem);
 		efree(filename);
@@ -1128,7 +1130,7 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 #endif
 
 	if (!buf) {
-		//TODO: can't allocate SHM
+		zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_OOM);
 		zend_shared_alloc_unlock();
 		efree(mem);
 		efree(filename);
