@@ -18,6 +18,10 @@
 
 #include "zend.h"
 #include "zend_virtual_cwd.h"
+#include "zend_compile.h"
+#include "zend_vm.h"
+
+#include "php.h"
 
 #include "ZendAccelerator.h"
 #include "zend_permanent.h"
@@ -590,10 +594,12 @@ int zend_permanent_script_store(zend_persistent_script *script)
 	zend_string *strings;
 
 	len = strlen(ZCG(accel_directives).permanent_cache);
-	filename = emalloc(len + script->full_path->len + sizeof(SUFFIX));
+	filename = emalloc(len + 33 + script->full_path->len + sizeof(SUFFIX));
 	memcpy(filename, ZCG(accel_directives).permanent_cache, len);
-	memcpy(filename + len, script->full_path->val, script->full_path->len);
-	memcpy(filename + len + script->full_path->len, SUFFIX, sizeof(SUFFIX));
+	filename[len] = '/';
+	memcpy(filename + len + 1, ZCG(system_id), 32);
+	memcpy(filename + len + 33, script->full_path->val, script->full_path->len);
+	memcpy(filename + len + 33 + script->full_path->len, SUFFIX, sizeof(SUFFIX));
 
 	if (zend_permanent_mkdir(filename, len) != SUCCESS) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create directory for file '%s'\n", filename);
@@ -776,7 +782,6 @@ static void zend_permanent_unserialize_op_array(zend_op_array           *op_arra
 	}
 
 	if (!IS_UNSERIALIZED(op_array->opcodes)) {
-#if ZEND_USE_ABS_CONST_ADDR || ZEND_USE_ABS_JMP_ADDR
 		zend_op *opline, *end;
 
 		UNSERIALIZE_PTR(op_array->opcodes);
@@ -817,11 +822,9 @@ static void zend_permanent_unserialize_op_array(zend_op_array           *op_arra
 					break;
 			}
 # endif
+			ZEND_VM_SET_OPCODE_HANDLER(opline);
 			opline++;
 		}
-#else
-		UNSERIALIZE_PTR(op_array->opcodes);
-#endif
 
 		if (op_array->arg_info) {
 			zend_arg_info *p, *end;
@@ -1055,10 +1058,12 @@ zend_persistent_script *zend_permanent_script_load(zend_string *full_path)
 	void *mem, *buf;
 
 	len = strlen(ZCG(accel_directives).permanent_cache);
-	filename = emalloc(len + full_path->len + sizeof(SUFFIX));
+	filename = emalloc(len + 33 + full_path->len + sizeof(SUFFIX));
 	memcpy(filename, ZCG(accel_directives).permanent_cache, len);
-	memcpy(filename + len, full_path->val, full_path->len);
-	memcpy(filename + len + full_path->len, SUFFIX, sizeof(SUFFIX));
+	filename[len] = '/';
+	memcpy(filename + len + 1, ZCG(system_id), 32);
+	memcpy(filename + len + 33, full_path->val, full_path->len);
+	memcpy(filename + len + 33 + full_path->len, SUFFIX, sizeof(SUFFIX));
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {

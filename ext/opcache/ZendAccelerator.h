@@ -239,6 +239,7 @@ typedef struct _zend_accel_globals {
 	int                     auto_globals_mask;
 	time_t                  request_time;
 	time_t                  last_restart_time; /* used to synchronize SHM and in-process caches */
+	char                    system_id[32];
 	/* preallocated shared-memory block to save current script */
 	void                   *mem;
 	void                   *arena_mem;

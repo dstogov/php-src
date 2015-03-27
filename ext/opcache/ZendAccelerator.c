@@ -35,6 +35,7 @@
 #include "main/SAPI.h"
 #include "main/php_streams.h"
 #include "main/php_open_temporary_file.h"
+#include "ext/standard/md5.h"
 #include "zend_API.h"
 #include "zend_ini.h"
 #include "zend_virtual_cwd.h"
@@ -2273,6 +2274,35 @@ static void accel_globals_dtor(zend_accel_globals *accel_globals)
 	}
 }
 
+#define ZEND_BIN_ID "BIN_" ZEND_TOSTR(SIZEOF_CHAR) ZEND_TOSTR(SIZEOF_INT) ZEND_TOSTR(SIZEOF_LONG) ZEND_TOSTR(SIZEOF_SIZE_T) ZEND_TOSTR(SIZEOF_ZEND_LONG) ZEND_TOSTR(ZEND_MM_ALIGNMENT)
+
+static void accel_gen_system_id(void)
+{
+	PHP_MD5_CTX context;
+	unsigned char digest[16], c;
+	char *md5str = ZCG(system_id);
+	int i;
+
+	PHP_MD5Init(&context);
+	PHP_MD5Update(&context, PHP_VERSION, sizeof(PHP_VERSION)-1);
+	PHP_MD5Update(&context, ZEND_EXTENSION_BUILD_ID, sizeof(ZEND_EXTENSION_BUILD_ID)-1);
+	PHP_MD5Update(&context, ZEND_BIN_ID, sizeof(ZEND_BIN_ID)-1);
+	if (strstr(PHP_VERSION, "-dev") != 0) {
+		/* Development versions may be changed from build to build */
+		PHP_MD5Update(&context, __DATE__, sizeof(__DATE__)-1);
+		PHP_MD5Update(&context, __TIME__, sizeof(__TIME__)-1);
+	}
+	PHP_MD5Final(digest, &context);
+	for (i = 0; i < 16; i++) {
+		c = digest[i] >> 4;
+		c = (c <= 9) ? c + '0' : c - 10 + 'a';
+		md5str[i * 2] = c;
+		c = digest[i] &  0x0f;
+		c = (c <= 9) ? c + '0' : c - 10 + 'a';
+		md5str[(i * 2) + 1] = c;
+	}
+}
+
 static int accel_startup(zend_extension *extension)
 {
 	zend_function *func;
@@ -2293,6 +2323,8 @@ static int accel_startup(zend_extension *extension)
 		zend_error(E_WARNING, ACCELERATOR_PRODUCT_NAME ": module registration failed!");
 		return FAILURE;
 	}
+
+	accel_gen_system_id();
 
 	/* no supported SAPI found - disable acceleration and stop initialization */
 	if (accel_find_sapi() == FAILURE) {
