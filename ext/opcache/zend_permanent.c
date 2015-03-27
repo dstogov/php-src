@@ -116,10 +116,18 @@ static void zend_permanent_unserialize_zval(zval                    *zv,
 static void *zend_permanent_serialize_interned(zend_string             *str,
                                                zend_permanent_metainfo *info)
 {
-	//TODO: save each interned string only once???
-	size_t len = ZEND_MM_ALIGNED_SIZE(_STR_HEADER_SIZE + str->len + 1);
-	void *ret = (void*)(info->str_size | Z_UL(1));
+	size_t len;
+	void *ret;
 
+	/* check if the same interned string was already stored */
+	ret = zend_shared_alloc_get_xlat_entry(str);
+	if (ret) {
+		return ret;
+	}
+
+	len = ZEND_MM_ALIGNED_SIZE(_STR_HEADER_SIZE + str->len + 1);
+	ret = (void*)(info->str_size | Z_UL(1));
+	zend_shared_alloc_register_xlat_entry(str, ret);
 	if (info->str_size + len > info->u.strings->len) {
 		//TODO: improve reallocation granularity???
 		size_t new_len = info->str_size + len;
@@ -549,6 +557,8 @@ static void zend_permanent_serialize(zend_persistent_script  *script,
                                      void                    *buf)
 {
 	zend_persistent_script *new_script;
+
+	zend_shared_alloc_clear_xlat_table();
 
 	memcpy(info->magic, "OPCACHE", 8);
 	info->mem_size = script->size;
