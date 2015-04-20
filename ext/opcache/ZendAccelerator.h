@@ -216,6 +216,8 @@ typedef struct _zend_accel_directives {
 	zend_long           interned_strings_buffer;
 	char          *restrict_api;
 	char          *permanent_cache;
+	zend_bool      permanent_only;
+	zend_bool      permanent_consistency_checks;
 } zend_accel_directives;
 
 typedef struct _zend_accel_globals {

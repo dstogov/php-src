@@ -1043,7 +1043,8 @@ zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle
 	zend_persistent_script *script;
 	zend_permanent_metainfo info;
 	zend_accel_hash_entry *bucket;
-	void *mem, *buf;
+	void *mem, *real_mem, *buf;
+	int cache_it = 1;
 
 	if (!full_path) {
 		return NULL;
@@ -1089,82 +1090,93 @@ zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle
 		return NULL;
 	}
 
-	mem = emalloc(info.mem_size + info.str_size);
+#ifdef __SSE2__
+	/* Align to 64-byte boundary */
+	real_mem = emalloc(info.mem_size + info.str_size + 64);
+	mem = (void*)(((zend_uintptr_t)real_mem + 63L) & ~63L);
+#else
+	mem = real_mem = emalloc(info.mem_size + info.str_size);
+#endif
 
 	if (read(fd, mem, info.mem_size + info.str_size) != (ssize_t)(info.mem_size + info.str_size)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
 		close(fd);
 		unlink(filename);
-		efree(mem);
+		efree(real_mem);
 		efree(filename);
 		return NULL;
 	}
 	close(fd);
 
 	/* verify checksum */
-	if (zend_adler32(ADLER32_INIT, mem, info.mem_size + info.str_size) != info.checksum) {
+	if (ZCG(accel_directives).permanent_consistency_checks &&
+	    zend_adler32(ADLER32_INIT, mem, info.mem_size + info.str_size) != info.checksum) {
 		zend_accel_error(ACCEL_LOG_WARNING, "corrupted file '%s'\n", filename);
 		unlink(filename);
-		efree(mem);
+		efree(real_mem);
 		efree(filename);
 		return NULL;
 	}
 
-	/* exclusive lock */
-	zend_shared_alloc_lock();
+	if (!ZCG(accel_directives).permanent_only) {
+		/* exclusive lock */
+		zend_shared_alloc_lock();
 
-	/* Check if we still need to put the file into the cache (may be it was
-	 * already stored by another process. This final check is done under
-	 * exclusive lock) */
-	bucket = zend_accel_hash_find_entry(&ZCSG(hash), full_path);
-	if (bucket) {
-		script = (zend_persistent_script *)bucket->data;
-		if (!script->corrupted) {
-			zend_shared_alloc_unlock();
-			efree(mem);
-			efree(filename);
-			return script;
+		/* Check if we still need to put the file into the cache (may be it was
+		 * already stored by another process. This final check is done under
+		 * exclusive lock) */
+		bucket = zend_accel_hash_find_entry(&ZCSG(hash), full_path);
+		if (bucket) {
+			script = (zend_persistent_script *)bucket->data;
+			if (!script->corrupted) {
+				zend_shared_alloc_unlock();
+				efree(real_mem);
+				efree(filename);
+				return script;
+			}
 		}
-	}
 
-	if (zend_accel_hash_is_full(&ZCSG(hash))) {
-		zend_accel_error(ACCEL_LOG_DEBUG, "No more entries in hash table!");
-		ZSMMG(memory_exhausted) = 1;
-		zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_HASH);
-		zend_shared_alloc_unlock();
-		efree(mem);
-		efree(filename);
-		return NULL;
-	}
+		if (zend_accel_hash_is_full(&ZCSG(hash))) {
+			zend_accel_error(ACCEL_LOG_DEBUG, "No more entries in hash table!");
+			ZSMMG(memory_exhausted) = 1;
+			zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_HASH);
+			zend_shared_alloc_unlock();
+			goto use_process_mem;
+		}
 
 #ifdef __SSE2__
-	/* Align to 64-byte boundary */
-	buf = zend_shared_alloc(info.mem_size + 64);
-	buf = (void*)(((zend_uintptr_t)buf + 63L) & ~63L);
+		/* Align to 64-byte boundary */
+		buf = zend_shared_alloc(info.mem_size + 64);
+		buf = (void*)(((zend_uintptr_t)buf + 63L) & ~63L);
 #else
-	buf = zend_shared_alloc(info.mem_size);
+		buf = zend_shared_alloc(info.mem_size);
 #endif
 
-	if (!buf) {
-		zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_OOM);
-		zend_shared_alloc_unlock();
-		efree(mem);
-		efree(filename);
-		return NULL;
+		if (!buf) {
+			zend_accel_schedule_restart_if_necessary(ACCEL_RESTART_OOM);
+			zend_shared_alloc_unlock();
+			goto use_process_mem;
+		}
+		memcpy(buf, mem, info.mem_size);
+	} else {
+use_process_mem:
+		//TODO: it need to be deallocated at the end of request???
+		buf = mem;
+		cache_it = 0;
 	}
-
-	memcpy(buf, mem, info.mem_size);
 
 	ZCG(mem) = ((char*)mem + info.mem_size);
 	script = (zend_persistent_script*)((char*)buf + info.script_offset);
 	zend_permanent_unserialize(script, buf);
 
-	script->dynamic_members.checksum = zend_accel_script_checksum(script);
+	if (cache_it) {
+		script->dynamic_members.checksum = zend_accel_script_checksum(script);
 
-	zend_accel_hash_update(&ZCSG(hash), script->full_path->val, script->full_path->len, 0, script);
+		zend_accel_hash_update(&ZCSG(hash), script->full_path->val, script->full_path->len, 0, script);
 
-	zend_shared_alloc_unlock();
-	efree(mem);
+		zend_shared_alloc_unlock();
+		efree(real_mem);
+	}
 	efree(filename);
 
 	return script;
