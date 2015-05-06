@@ -97,7 +97,7 @@ void free_persistent_script(zend_persistent_script *persistent_script, int destr
 	zend_hash_destroy(&persistent_script->class_table);
 
 	if (persistent_script->full_path) {
-		efree(persistent_script->full_path);
+		zend_string_release(persistent_script->full_path);
 	}
 
 	efree(persistent_script);
