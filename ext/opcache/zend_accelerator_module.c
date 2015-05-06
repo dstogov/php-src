@@ -577,6 +577,17 @@ static ZEND_FUNCTION(opcache_get_status)
 
 	/* Trivia */
 	add_assoc_bool(return_value, "opcache_enabled", ZCG(enabled) && (ZCG(counted) || ZCSG(accelerator_enabled)));
+
+#ifdef HAVE_OPCACHE_FILE_CACHE
+	if (ZCG(accel_directives).file_cache) {
+		add_assoc_string(return_value, "file_cache", ZCG(accel_directives).file_cache);
+	}
+	if (ZCG(accel_directives).file_cache_only) {
+		add_assoc_bool(return_value, "file_cache_only", 1);
+		return;
+	}
+#endif
+
 	add_assoc_bool(return_value, "cache_full", ZSMMG(memory_exhausted));
 	add_assoc_bool(return_value, "restart_pending", ZCSG(restart_pending));
 	add_assoc_bool(return_value, "restart_in_progress", ZCSG(restart_in_progress));
