@@ -258,7 +258,11 @@ static ZEND_INI_MH(OnUpdateFileCache)
 		    if (!IS_ABSOLUTE_PATH(new_value->val, new_value->len) ||
 			    zend_stat(new_value->val, &buf) != 0 ||
 			    !S_ISDIR(buf.st_mode) ||
+#ifndef ZEND_WIN32
 				access(new_value->val, R_OK | W_OK | X_OK) != 0) {
+#else
+				_access(new_value->val, 06) != 0) {
+#endif
 				zend_accel_error(ACCEL_LOG_WARNING, "opcache.file_cache must be a full path of accessable directory.\n");
 				new_value = NULL;
 			}

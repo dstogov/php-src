@@ -1784,9 +1784,9 @@ zend_op_array *persistent_compile_file(zend_file_handle *file_handle, int type)
          * If it isn't compile_and_cache_file() changes the flag to 0
          */
        	from_shared_memory = 0;
-		persistent_script = opcache_compile_file(file_handle, type, key, key_length, &op_array);
+		persistent_script = opcache_compile_file(file_handle, type, key, key ? key_length : 0, &op_array);
 		if (persistent_script) {
-			persistent_script = cache_script_in_shared_memory(persistent_script, key, key_length, &from_shared_memory);
+			persistent_script = cache_script_in_shared_memory(persistent_script, key, key ? key_length : 0, &from_shared_memory);
 		}
 
 		/* Caching is disabled, returning op_array;
