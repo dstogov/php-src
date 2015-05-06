@@ -424,6 +424,25 @@ void zend_accel_info(ZEND_MODULE_INFO_FUNC_ARGS)
 	} else {
 		php_info_print_table_row(2, "Optimization", "Disabled");
 	}
+#ifdef HAVE_OPCACHE_FILE_CACHE
+	if (!ZCG(accel_directives).file_cache_only) {
+		php_info_print_table_row(2, "SHM Cache", "Enabled");
+	} else {
+		php_info_print_table_row(2, "SHM Cache", "Disabled");
+	}
+	if (ZCG(accel_directives).file_cache) {
+		php_info_print_table_row(2, "File Cache", "Enabled");
+	} else {
+		php_info_print_table_row(2, "File Cache", "Disabled");
+	}
+	if (ZCG(accel_directives).file_cache_only) {
+		if (!accel_startup_ok || zps_api_failure_reason) {
+			php_info_print_table_row(2, "Startup Failed", zps_api_failure_reason);
+		} else {
+			php_info_print_table_row(2, "Startup", "OK");
+		}
+	} else
+#endif
 	if (ZCG(enabled)) {
 		if (!accel_startup_ok || zps_api_failure_reason) {
 			php_info_print_table_row(2, "Startup Failed", zps_api_failure_reason);
