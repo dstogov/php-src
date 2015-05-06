@@ -1530,6 +1530,11 @@ zend_op_array *file_cache_compile_file(zend_file_handle *file_handle, int type)
 	zend_op_array *op_array = NULL;
 	int from_memory; /* if the script we've got is stored in SHM */
 
+	if (is_stream_path(file_handle->filename) &&
+	    !is_cacheable_stream_path(file_handle->filename)) {
+		return accelerator_orig_compile_file(file_handle, type);
+	}
+
 	if (!file_handle->opened_path) {
 		if (file_handle->type == ZEND_HANDLE_FILENAME &&
 		    accelerator_orig_zend_stream_open_function(file_handle->filename, file_handle) == FAILURE) {
