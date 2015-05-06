@@ -33,8 +33,11 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/uio.h>
 #include <fcntl.h>
+
+#ifdef HAVE_SYS_UIO_H
+# include <sys/uio.h>
+#endif
 
 #ifdef HAVE_SYS_FILE_H
 # include <sys/file.h>
@@ -635,7 +638,9 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 	int fd;
 	char *filename;
 	zend_file_cache_metainfo info;
+#ifndef ZEND_WIN32
 	struct iovec vec[3];
+#endif
 	void *mem, *buf;
 
 	len = strlen(ZCG(accel_directives).file_cache);
@@ -652,7 +657,11 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 		return FAILURE;
 	}
 
-	fd = open(filename, O_CREAT | O_EXCL | O_RDWR | O_BINARY, S_IRWXU);
+#ifndef ZEND_WIN32
+	fd = open(filename, O_CREAT | O_EXCL | O_RDWR | O_BINARY, S_IRUSR | S_IWUSR);
+#else
+	fd = open(filename, O_CREAT | O_EXCL | O_RDWR | O_BINARY, _S_IREAD | _S_IWRITE);
+#endif
 	if (fd < 0) {
 		if (errno != EEXIST) {
 			zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create file '%s'\n", filename);
@@ -681,15 +690,16 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 	zend_file_cache_serialize(script, &info, buf);
 	zend_shared_alloc_destroy_xlat_table();
 
+	info.checksum = zend_adler32(ADLER32_INIT, buf, script->size);
+	info.checksum = zend_adler32(info.checksum, (signed char*)((zend_string*)ZCG(mem))->val, info.str_size);
+
+#ifndef ZEND_WIN32
 	vec[0].iov_base = &info;
 	vec[0].iov_len = sizeof(info);
 	vec[1].iov_base = buf;
 	vec[1].iov_len = script->size;
 	vec[2].iov_base = ((zend_string*)ZCG(mem))->val;
 	vec[2].iov_len = info.str_size;
-
-	info.checksum = zend_adler32(ADLER32_INIT, buf, script->size);
-	info.checksum = zend_adler32(info.checksum, (signed char*)((zend_string*)ZCG(mem))->val, info.str_size);
 
 	if (writev(fd, vec, 3) != (ssize_t)(sizeof(info) + script->size + info.str_size)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot write to file '%s'\n", filename);
@@ -699,6 +709,20 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 		efree(filename);
 		return FAILURE;
 	}
+#else
+	if (ZEND_LONG_MAX < (zend_long)(sizeof(info) + script->size + info.str_size) ||
+		write(fd, &info, sizeof(info)) != sizeof(info) ||
+		write(fd, buf, script->size) != script->size ||
+		write(fd, ((zend_string*)ZCG(mem))->val, info.str_size) != info.str_size
+		) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot write to file '%s'\n", filename);
+		zend_string_release((zend_string*)ZCG(mem));
+		efree(mem);
+		unlink(filename);
+		efree(filename);
+		return FAILURE;
+	}
+#endif
 
 	zend_string_release((zend_string*)ZCG(mem));
 	efree(mem);

@@ -242,16 +242,21 @@ static ZEND_INI_MH(OnEnable)
 }
 
 #ifdef HAVE_OPCACHE_FILE_CACHE
+
+#ifndef S_ISDIR
+# define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
+#endif
+
 static ZEND_INI_MH(OnUpdateFileCache)
 {
 	if (new_value) {
 		if (!new_value->len) {
 			new_value = NULL;
 		} else {
-			struct stat buf;
+			zend_stat_t buf;
 
 		    if (!IS_ABSOLUTE_PATH(new_value->val, new_value->len) ||
-			    stat(new_value->val, &buf) != 0 ||
+			    zend_stat(new_value->val, &buf) != 0 ||
 			    !S_ISDIR(buf.st_mode) ||
 				access(new_value->val, R_OK | W_OK | X_OK) != 0) {
 				zend_accel_error(ACCEL_LOG_WARNING, "opcache.file_cache must be a full path of accessable directory.\n");
