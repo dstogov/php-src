@@ -241,7 +241,8 @@ static ZEND_INI_MH(OnEnable)
 	}
 }
 
-static ZEND_INI_MH(OnUpdatePermanentCache)
+#ifdef HAVE_OPCACHE_FILE_CACHE
+static ZEND_INI_MH(OnUpdateFileCache)
 {
 	if (new_value) {
 		if (!new_value->len) {
@@ -253,7 +254,7 @@ static ZEND_INI_MH(OnUpdatePermanentCache)
 			    stat(new_value->val, &buf) != 0 ||
 			    !S_ISDIR(buf.st_mode) ||
 				access(new_value->val, R_OK | W_OK | X_OK) != 0) {
-				zend_accel_error(ACCEL_LOG_WARNING, "opcache.permanent_cache must be a full path of accessable directory.\n");
+				zend_accel_error(ACCEL_LOG_WARNING, "opcache.file_cache must be a full path of accessable directory.\n");
 				new_value = NULL;
 			}
 		}
@@ -261,6 +262,7 @@ static ZEND_INI_MH(OnUpdatePermanentCache)
 	OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 	return SUCCESS;
 }
+#endif
 
 ZEND_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("opcache.enable"             , "1", PHP_INI_ALL,    OnEnable,     enabled                             , zend_accel_globals, accel_globals)
@@ -298,9 +300,11 @@ ZEND_INI_BEGIN()
 	STD_PHP_INI_ENTRY("opcache.mmap_base", NULL, PHP_INI_SYSTEM,	OnUpdateString,	                             accel_directives.mmap_base,                 zend_accel_globals, accel_globals)
 #endif
 
-	STD_PHP_INI_ENTRY("opcache.permanent_cache"              , NULL  , PHP_INI_SYSTEM, OnUpdatePermanentCache, accel_directives.permanent_cache,              zend_accel_globals, accel_globals)
-	STD_PHP_INI_ENTRY("opcache.permanent_only"               , "0"   , PHP_INI_SYSTEM, OnUpdateBool,	       accel_directives.permanent_only,               zend_accel_globals, accel_globals)
-	STD_PHP_INI_ENTRY("opcache.permanent_consistency_checks" , "1"   , PHP_INI_SYSTEM, OnUpdateBool,	       accel_directives.permanent_consistency_checks, zend_accel_globals, accel_globals)
+#ifdef HAVE_OPCACHE_FILE_CACHE
+	STD_PHP_INI_ENTRY("opcache.file_cache"                    , NULL  , PHP_INI_SYSTEM, OnUpdateFileCache, accel_directives.file_cache,                    zend_accel_globals, accel_globals)
+	STD_PHP_INI_ENTRY("opcache.file_cache_only"               , "0"   , PHP_INI_SYSTEM, OnUpdateBool,	   accel_directives.file_cache_only,               zend_accel_globals, accel_globals)
+	STD_PHP_INI_ENTRY("opcache.file_cache_consistency_checks" , "1"   , PHP_INI_SYSTEM, OnUpdateBool,	   accel_directives.file_cache_consistency_checks, zend_accel_globals, accel_globals)
+#endif
 ZEND_INI_END()
 
 static int filename_is_in_cache(zend_string *filename)

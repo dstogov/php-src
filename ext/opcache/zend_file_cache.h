@@ -16,10 +16,10 @@
    +----------------------------------------------------------------------+
 */
 
-#ifndef ZEND_PERMANENT_H
-#define ZEND_PERMANENT_H
+#ifndef ZEND_FILE_CACHE_H
+#define ZEND_FILE_CACHE_H
 
-int zend_permanent_script_store(zend_persistent_script *script);
-zend_persistent_script *zend_permanent_script_load(zend_file_handle *file_handle);
+int zend_file_cache_script_store(zend_persistent_script *script);
+zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handle);
 
-#endif /* ZEND_PERMANENT_H */
+#endif /* ZEND_FILE_CACHE_H */
