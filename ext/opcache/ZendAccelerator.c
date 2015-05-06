@@ -1153,18 +1153,13 @@ static zend_persistent_script *cache_script_in_file_cache(zend_persistent_script
 	memory_used = zend_accel_script_persist_calc(new_persistent_script, NULL, 0);
 
 	/* Allocate memory block */
-	//TODO: it need to be deallocated at the end of request???
 #ifdef __SSE2__
 	/* Align to 64-byte boundary */
-	ZCG(mem) = emalloc(memory_used + 64);
+	ZCG(mem) = zend_arena_alloc(&CG(arena), memory_used + 64);
 	ZCG(mem) = (void*)(((zend_uintptr_t)ZCG(mem) + 63L) & ~63L);
 #else
-	ZCG(mem) = emalloc(memory_used);
+	ZCG(mem) = zend_arena_alloc(&CG(arena), memory_used);
 #endif
-	if (!ZCG(mem)) {
-		zend_shared_alloc_destroy_xlat_table();
-		return new_persistent_script;
-	}
 
 	/* Copy into shared memory */
 	new_persistent_script = zend_accel_script_persist(new_persistent_script, NULL, 0);

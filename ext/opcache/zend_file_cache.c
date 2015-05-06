@@ -1045,7 +1045,7 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 	zend_persistent_script *script;
 	zend_file_cache_metainfo info;
 	zend_accel_hash_entry *bucket;
-	void *mem, *real_mem, *buf;
+	void *mem, *checkpoint, *buf;
 	int cache_it = 1;
 
 	if (!full_path) {
@@ -1092,19 +1092,20 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 		return NULL;
 	}
 
+	checkpoint = zend_arena_checkpoint(CG(arena));
 #ifdef __SSE2__
 	/* Align to 64-byte boundary */
-	real_mem = emalloc(info.mem_size + info.str_size + 64);
-	mem = (void*)(((zend_uintptr_t)real_mem + 63L) & ~63L);
+	mem = zend_arena_alloc(&CG(arena), info.mem_size + info.str_size + 64);
+	mem = (void*)(((zend_uintptr_t)mem + 63L) & ~63L);
 #else
-	mem = real_mem = emalloc(info.mem_size + info.str_size);
+	mem = zend_arena_alloc(&CG(arena), info.mem_size + info.str_size);
 #endif
 
 	if (read(fd, mem, info.mem_size + info.str_size) != (ssize_t)(info.mem_size + info.str_size)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
 		close(fd);
 		unlink(filename);
-		efree(real_mem);
+		zend_arena_release(&CG(arena), checkpoint);
 		efree(filename);
 		return NULL;
 	}
@@ -1115,7 +1116,7 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 	    zend_adler32(ADLER32_INIT, mem, info.mem_size + info.str_size) != info.checksum) {
 		zend_accel_error(ACCEL_LOG_WARNING, "corrupted file '%s'\n", filename);
 		unlink(filename);
-		efree(real_mem);
+		zend_arena_release(&CG(arena), checkpoint);
 		efree(filename);
 		return NULL;
 	}
@@ -1132,7 +1133,7 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 			script = (zend_persistent_script *)bucket->data;
 			if (!script->corrupted) {
 				zend_shared_alloc_unlock();
-				efree(real_mem);
+				zend_arena_release(&CG(arena), checkpoint);
 				efree(filename);
 				return script;
 			}
@@ -1162,7 +1163,6 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 		memcpy(buf, mem, info.mem_size);
 	} else {
 use_process_mem:
-		//TODO: it need to be deallocated at the end of request???
 		buf = mem;
 		cache_it = 0;
 	}
@@ -1177,7 +1177,7 @@ use_process_mem:
 		zend_accel_hash_update(&ZCSG(hash), script->full_path->val, script->full_path->len, 0, script);
 
 		zend_shared_alloc_unlock();
-		efree(real_mem);
+		zend_arena_release(&CG(arena), checkpoint);
 	}
 	efree(filename);
 
