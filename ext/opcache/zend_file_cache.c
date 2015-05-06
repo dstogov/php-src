@@ -1184,4 +1184,21 @@ use_process_mem:
 	return script;
 }
 
+void zend_file_cache_invalidate(zend_string *full_path)
+{
+	size_t len;
+	char *filename;
+
+	len = strlen(ZCG(accel_directives).file_cache);
+	filename = emalloc(len + 33 + full_path->len + sizeof(SUFFIX));
+	memcpy(filename, ZCG(accel_directives).file_cache, len);
+	filename[len] = '/';
+	memcpy(filename + len + 1, ZCG(system_id), 32);
+	memcpy(filename + len + 33, full_path->val, full_path->len);
+	memcpy(filename + len + 33 + full_path->len, SUFFIX, sizeof(SUFFIX));
+
+	unlink(filename);
+	efree(filename);
+}
+
 #endif /* HAVE_OPCACHE_FILE_CACHE */

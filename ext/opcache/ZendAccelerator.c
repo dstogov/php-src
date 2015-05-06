@@ -1068,6 +1068,15 @@ int zend_accel_invalidate(const char *filename, int filename_len, zend_bool forc
 	zend_persistent_script *persistent_script;
 
 	if (!ZCG(enabled) || !accel_startup_ok || !ZCSG(accelerator_enabled) || accelerator_shm_read_lock() != SUCCESS) {
+#ifdef HAVE_OPCACHE_FILE_CACHE
+		if (ZCG(accel_directives).file_cache) {
+			realpath = accelerator_orig_zend_resolve_path(filename, filename_len);
+			if (realpath) {
+				zend_file_cache_invalidate(realpath);
+				zend_string_release(realpath);
+			}
+		}
+#endif
 		return FAILURE;
 	}
 
@@ -1076,6 +1085,12 @@ int zend_accel_invalidate(const char *filename, int filename_len, zend_bool forc
 	if (!realpath) {
 		return FAILURE;
 	}
+
+#ifdef HAVE_OPCACHE_FILE_CACHE
+	if (ZCG(accel_directives).file_cache) {
+		zend_file_cache_invalidate(realpath);
+	}
+#endif
 
 	persistent_script = zend_accel_hash_find(&ZCSG(hash), realpath);
 	if (persistent_script && !persistent_script->corrupted) {
@@ -1106,7 +1121,7 @@ int zend_accel_invalidate(const char *filename, int filename_len, zend_bool forc
 	}
 
 	accelerator_shm_read_unlock();
-	efree(realpath);
+	zend_string_release(realpath);
 
 	return SUCCESS;
 }
