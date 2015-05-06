@@ -36,6 +36,51 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 
+#ifdef HAVE_SYS_FILE_H
+# include <sys/file.h>
+#endif
+
+#ifdef ZEND_WIN32
+# define LOCK_SH 0
+# define LOCK_EX 1
+# define LOCK_UN 2
+static int zend_file_cache_flock(int fd, int op)
+{
+	OVERLAPPED offset = {0,0,0,0,NULL};
+	if (op == LOCK_EX) {
+		if (LockFileEx((HANDLE)_get_osfhandle(fd),
+		               LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &offset) == TRUE) {
+			return 0;
+		}
+	} else if (op == LOCK_SH) {
+		if (LockFileEx((HANDLE)_get_osfhandle(fd),
+		               0, 0, 1, 0, &offset) == TRUE) {
+			return 0;
+		}
+	} else if (op == LOCK_UN) {
+		if (UnlockFileEx((HANDLE)_get_osfhandle(fd),
+		                 0, 1, 0, &offset) == TRUE) {
+			return 0;
+		}
+	}
+	return -1;
+}
+#elif defined(HAVE_FLOCK)
+# define zend_file_cache_flock flock
+#else
+# define LOCK_SH 0
+# define LOCK_EX 1
+# define LOCK_UN 2
+static int zend_file_cache_flock(int fd, int type)
+{
+	return 0;
+}
+#endif
+
+#ifndef O_BINARY
+#  define O_BINARY 0
+#endif
+
 #define SUFFIX ".bin"
 
 #define IS_SERIALIZED_INTERNED(ptr) \
@@ -607,11 +652,17 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 		return FAILURE;
 	}
 
-	fd = open(filename, O_CREAT | O_EXCL | O_RDWR, S_IRWXU);
+	fd = open(filename, O_CREAT | O_EXCL | O_RDWR | O_BINARY, S_IRWXU);
 	if (fd < 0) {
 		if (errno != EEXIST) {
 			zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create file '%s'\n", filename);
 		}
+		efree(filename);
+		return FAILURE;
+	}
+
+	if (zend_file_cache_flock(fd, LOCK_EX) != 0) {
+		close(fd);
 		efree(filename);
 		return FAILURE;
 	}
@@ -651,6 +702,9 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 
 	zend_string_release((zend_string*)ZCG(mem));
 	efree(mem);
+	if (zend_file_cache_flock(fd, LOCK_UN) != 0) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot unlock file '%s'\n", filename);
+	}
 	close(fd);
 	efree(filename);
 
@@ -1063,14 +1117,21 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 	memcpy(filename + len + 33, full_path->val, full_path->len);
 	memcpy(filename + len + 33 + full_path->len, SUFFIX, sizeof(SUFFIX));
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY | O_BINARY);
 	if (fd < 0) {
+		efree(filename);
+		return NULL;
+	}
+
+	if (zend_file_cache_flock(fd, LOCK_SH) != 0) {
+		close(fd);
 		efree(filename);
 		return NULL;
 	}
 
 	if (read(fd, &info, sizeof(info)) != sizeof(info)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
+		zend_file_cache_flock(fd, LOCK_UN);
 		close(fd);
 		unlink(filename);
 		efree(filename);
@@ -1081,6 +1142,7 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 	if (memcmp(info.magic, "OPCACHE", 8) != 0 ||
 	    memcmp(info.system_id, ZCG(system_id), 32) != 0) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
+		zend_file_cache_flock(fd, LOCK_UN);
 		close(fd);
 		unlink(filename);
 		efree(filename);
@@ -1090,6 +1152,9 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 	/* verify timestamp */
 	if (ZCG(accel_directives).validate_timestamps &&
 	    zend_get_file_handle_timestamp(file_handle, NULL) != info.timestamp) {
+		if (zend_file_cache_flock(fd, LOCK_UN) != 0) {
+			zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot unlock file '%s'\n", filename);
+		}
 		close(fd);
 		unlink(filename);
 		efree(filename);
@@ -1107,11 +1172,15 @@ zend_persistent_script *zend_file_cache_script_load(zend_file_handle *file_handl
 
 	if (read(fd, mem, info.mem_size + info.str_size) != (ssize_t)(info.mem_size + info.str_size)) {
 		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot read from file '%s'\n", filename);
+		zend_file_cache_flock(fd, LOCK_UN);
 		close(fd);
 		unlink(filename);
 		zend_arena_release(&CG(arena), checkpoint);
 		efree(filename);
 		return NULL;
+	}
+	if (zend_file_cache_flock(fd, LOCK_UN) != 0) {
+		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot unlock file '%s'\n", filename);
 	}
 	close(fd);
 
