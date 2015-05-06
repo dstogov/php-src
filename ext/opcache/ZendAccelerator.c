@@ -2571,11 +2571,17 @@ static int accel_startup(zend_extension *extension)
 		zend_shared_alloc_unlock();
 
 		SHM_PROTECT();
+#ifdef HAVE_OPCACHE_FILE_CACHE
+	} else if (!ZCG(accel_directives).file_cache) {
+		accel_startup_ok = 0;
+		zend_accel_error(ACCEL_LOG_FATAL, "opcache.file_cache_only is set without a proper setting of opcache.file_cache");
+		return SUCCESS;
 	} else {
 		accel_shared_globals = calloc(1, sizeof(zend_accel_shared_globals));
 
 		/* Init auto-global strings */
 		zend_accel_init_auto_globals();
+#endif
 	}
 
 	/* Override compiler */
