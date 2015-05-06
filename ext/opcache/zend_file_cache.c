@@ -1023,7 +1023,7 @@ static void zend_file_cache_unserialize_class(zval                    *zv,
 }
 
 static void zend_file_cache_unserialize(zend_persistent_script  *script,
-                                       void                    *buf)
+                                        void                    *buf)
 {
 	script->mem = buf;
 
