@@ -148,8 +148,10 @@ static void *zend_file_cache_unserialize_interned(zend_string *str)
 
 	str = (zend_string*)((char*)ZCG(mem) + ((size_t)(str) & ~Z_UL(1)));
 	ret = accel_new_interned_string(str);
-	//TODO: what if it fails ???
-	ZEND_ASSERT(ret && ret != str);
+	if (ret == str) {
+		/* String wasn't interned but we will use it as interned anyway */
+		GC_FLAGS(ret) |= IS_STR_INTERNED | IS_STR_PERMANENT;
+	}
 	return ret;
 }
 
