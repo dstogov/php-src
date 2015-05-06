@@ -607,7 +607,9 @@ int zend_file_cache_script_store(zend_persistent_script *script)
 
 	fd = open(filename, O_CREAT | O_EXCL | O_RDWR, S_IRWXU);
 	if (fd < 0) {
-		zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create file '%s'\n", filename);
+		if (errno != EEXIST) {
+			zend_accel_error(ACCEL_LOG_WARNING, "opcache cannot create file '%s'\n", filename);
+		}
 		efree(filename);
 		return FAILURE;
 	}
