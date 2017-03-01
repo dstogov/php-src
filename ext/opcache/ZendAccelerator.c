@@ -599,7 +599,7 @@ static void accel_copy_permanent_strings(zend_new_interned_string_func_t new_int
 		if (p->key) {
 			p->key = new_interned_string(p->key);
 		}
-		c = (zend_constant*)Z_PTR(q->val);
+		c = (zend_constant*)Z_PTR(p->val);
 		if (c->name) {
 			c->name = new_interned_string(c->name);
 		}
@@ -642,7 +642,7 @@ static zend_string *accel_replace_string_by_process_permanent(zend_string *str)
 		zend_string_release(str);
 		return ret;
 	}
-	printf("%s\n", ZSTR_VAL(str));
+	ZEND_ASSERT(0);
 	return str;
 }
 
@@ -2827,6 +2827,10 @@ static int accel_startup(zend_extension *extension)
 			case SUCCESSFULLY_REATTACHED:
 				zend_shared_alloc_lock();
 				accel_shared_globals = (zend_accel_shared_globals *) ZSMMG(app_shared_globals);
+				if (ZCG(accel_directives).interned_strings_buffer) {
+					zend_interned_strings_set_permanent_storage_copy_handler(accel_use_shm_interned_strings);
+				}
+				zend_interned_strings_set_request_storage_handler(accel_new_interned_string_for_php);
 				zend_shared_alloc_unlock();
 				break;
 			case FAILED_REATTACHED:
