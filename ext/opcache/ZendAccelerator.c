@@ -620,6 +620,14 @@ static void accel_copy_permanent_strings(zend_new_interned_string_func_t new_int
 			p->key = new_interned_string(p->key);
 		}
 	}
+
+	for (idx = 0; idx < module_registry.nNumUsed; idx++) {
+		p = module_registry.arData + idx;
+
+		if (p->key) {
+			p->key = new_interned_string(p->key);
+		}
+	}
 }
 
 static zend_string *accel_replace_string_by_shm_permanent(zend_string *str)
@@ -630,7 +638,6 @@ static zend_string *accel_replace_string_by_shm_permanent(zend_string *str)
 		zend_string_release(str);
 		return ret;
 	}
-	ZEND_ASSERT(0);
 	return str;
 }
 
@@ -657,6 +664,9 @@ static void accel_use_shm_interned_strings(void)
 		accel_copy_permanent_strings(accel_new_interned_string);
 	} else {
 		accel_copy_permanent_strings(accel_replace_string_by_shm_permanent);
+		if (ZCG(counted)) {
+			accel_deactivate_sub();
+		}
 	}
 	accel_interned_strings_save_state();
 
