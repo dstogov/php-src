@@ -921,6 +921,48 @@ PHP_FUNCTION(trim)
 }
 /* }}} */
 
+/* {{{ proto string trim(string str [, string character_mask])
+   Strips whitespace from the beginning and end of a string */
+PHP_LIGHT_FUNCTION(trim)
+{
+	zend_string *str;
+
+	do {
+		if (EXPECTED(Z_TYPE_P(arg1) == IS_STRING)) {
+			str = zend_string_copy(Z_STR_P(arg1));
+			break;
+		} else if (Z_ISREF_P(arg1)) {
+			ZVAL_DEREF(arg1);
+			if (EXPECTED(Z_TYPE_P(arg1) == IS_STRING)) {
+				str = zend_string_copy(Z_STR_P(arg1));
+				break;
+			}
+		}
+		if (ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))) {
+			zend_internal_type_error(1, "trim() expects parameter 1 to be string, %s given",
+				zend_zval_type_name(arg1));
+			RETURN_NULL();
+		} else {
+			zval tmp;
+
+			ZVAL_DUP(&tmp, arg1); // TODO: avoid duplication ???
+			if (!zend_parse_arg_str_weak(&tmp, &str)) {
+				zval_ptr_dtor(&tmp);
+				zend_internal_type_error(0, "trim() expects parameter 1 to be string, %s given",
+					zend_zval_type_name(arg1));
+				RETURN_NULL();
+			}
+		}
+	} while (0);
+
+	if (return_value) {
+		RETVAL_STR(php_trim_int(str, NULL, 0, 3));
+	}
+
+	zend_string_release(str);
+}
+/* }}} */
+
 /* {{{ proto string rtrim(string str [, string character_mask])
    Removes trailing whitespace */
 PHP_FUNCTION(rtrim)
@@ -2767,6 +2809,49 @@ PHP_FUNCTION(ord)
 }
 /* }}} */
 
+/* {{{ proto int ord(string character)
+   Returns ASCII value of character
+   Warning: This function is special-cased by zend_compile.c and so is bypassed for constant string argument */
+PHP_LIGHT_FUNCTION(ord)
+{
+	zend_string *str;
+
+	do {
+		if (EXPECTED(Z_TYPE_P(arg1) == IS_STRING)) {
+			str = zend_string_copy(Z_STR_P(arg1));
+			break;
+		} else if (Z_ISREF_P(arg1)) {
+			ZVAL_DEREF(arg1);
+			if (EXPECTED(Z_TYPE_P(arg1) == IS_STRING)) {
+				str = zend_string_copy(Z_STR_P(arg1));
+				break;
+			}
+		}
+		if (ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))) {
+			zend_internal_type_error(1, "ord() expects parameter 1 to be string, %s given",
+				zend_zval_type_name(arg1));
+			RETURN_NULL();
+		} else {
+			zval tmp;
+
+			ZVAL_DUP(&tmp, arg1); // TODO: avoid duplication ???
+			if (!zend_parse_arg_str_weak(&tmp, &str)) {
+				zval_ptr_dtor(&tmp);
+				zend_internal_type_error(0, "ord() expects parameter 1 to be string, %s given",
+					zend_zval_type_name(arg1));
+				RETURN_NULL();
+			}
+		}
+	} while (0);
+
+	if (return_value) {
+		RETVAL_LONG((unsigned char) ZSTR_VAL(str)[0]);
+	}
+
+	zend_string_release(str);
+}
+/* }}} */
+
 /* {{{ proto string chr(int ascii)
    Converts ASCII code to a character
    Warning: This function is special-cased by zend_compile.c and so is bypassed for constant integer argument */
@@ -2784,6 +2869,44 @@ PHP_FUNCTION(chr)
 
 	c &= 0xff;
 	ZVAL_INTERNED_STR(return_value, ZSTR_CHAR(c));
+}
+/* }}} */
+
+/* {{{ proto string chr(int ascii)
+   Converts ASCII code to a character
+   Warning: This function is special-cased by zend_compile.c and so is bypassed for constant integer argument */
+PHP_LIGHT_FUNCTION(chr)
+{
+	zend_long c;
+
+	do {
+		if (EXPECTED(Z_TYPE_P(arg1) == IS_LONG)) {
+			c = Z_LVAL_P(arg1);
+			break;
+		} else if (Z_ISREF_P(arg1)) {
+			ZVAL_DEREF(arg1);
+			if (EXPECTED(Z_TYPE_P(arg1) == IS_LONG)) {
+				c = Z_LVAL_P(arg1);
+				break;
+			}
+		}
+		if (ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))) {
+			c = 0;
+		} else {
+			zval tmp;
+
+			ZVAL_DUP(&tmp, arg1); // TODO: avoid duplication ???
+			if (!zend_parse_arg_long_weak(&tmp, &c)) {
+				zval_ptr_dtor(&tmp);
+				c = 0;
+			}
+		}
+	} while (0);
+
+	if (return_value) {
+		c &= 0xff;
+		ZVAL_INTERNED_STR(return_value, ZSTR_CHAR(c));
+	}
 }
 /* }}} */
 

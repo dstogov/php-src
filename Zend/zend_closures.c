@@ -349,7 +349,7 @@ static int zend_closure_compare_objects(zval *o1, zval *o2) /* {{{ */
 ZEND_API zend_function *zend_get_closure_invoke_method(zend_object *object) /* {{{ */
 {
 	zend_closure *closure = (zend_closure *)object;
-	zend_function *invoke = (zend_function*)emalloc(sizeof(zend_function));
+	zend_function *invoke = (zend_function*)ecalloc(1, sizeof(zend_function));
 	const uint32_t keep_flags =
 		ZEND_ACC_RETURN_REFERENCE | ZEND_ACC_VARIADIC | ZEND_ACC_HAS_RETURN_TYPE;
 

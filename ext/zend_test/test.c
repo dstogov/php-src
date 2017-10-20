@@ -134,7 +134,7 @@ static zend_object *zend_test_class_new(zend_class_entry *class_type) /* {{{ */ 
 /* }}} */
 
 static zend_function *zend_test_class_method_get(zend_object **object, zend_string *name, const zval *key) /* {{{ */ {
-	zend_internal_function *fptr = emalloc(sizeof(zend_internal_function));
+	zend_internal_function *fptr = ecalloc(1, sizeof(zend_internal_function));
 	fptr->type = ZEND_OVERLOADED_FUNCTION_TEMPORARY;
 	fptr->num_args = 1;
 	fptr->arg_info = NULL;
@@ -149,7 +149,7 @@ static zend_function *zend_test_class_method_get(zend_object **object, zend_stri
 /* }}} */
 
 static zend_function *zend_test_class_static_method_get(zend_class_entry *ce, zend_string *name) /* {{{ */ {
-	zend_internal_function *fptr = emalloc(sizeof(zend_internal_function));
+	zend_internal_function *fptr = ecalloc(1, sizeof(zend_internal_function));
 	fptr->type = ZEND_OVERLOADED_FUNCTION;
 	fptr->num_args = 1;
 	fptr->arg_info = NULL;

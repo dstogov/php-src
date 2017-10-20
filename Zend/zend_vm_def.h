@@ -8320,6 +8320,39 @@ ZEND_VM_HANDLER(195, ZEND_FUNC_GET_ARGS, UNUSED|CONST, UNUSED)
 	ZEND_VM_NEXT_OPCODE();
 }
 
+ZEND_VM_HANDLER(198, ZEND_LIGHT_ICALL, CONST, UNUSED|CONST|TMPVAR|CV, NUM)
+{
+	USE_OPLINE
+	zval *fname = GET_OP1_ZVAL_PTR(BP_VAR_R);
+	zend_free_op free_op2;
+	zval *arg1;
+	zval *func;
+	zend_function *fbc;
+	zend_execute_data *call;
+
+	SAVE_OPLINE();
+	fbc = CACHED_PTR(Z_CACHE_SLOT_P(fname));
+	if (UNEXPECTED(fbc == NULL)) {
+		func = zend_hash_find(EG(function_table), Z_STR_P(fname));
+		if (UNEXPECTED(func == NULL)) {
+		    SAVE_OPLINE();
+			zend_throw_error(NULL, "Call to undefined function %s()", Z_STRVAL_P(fname));
+			HANDLE_EXCEPTION();
+		}
+		fbc = Z_FUNC_P(func);
+		CACHE_PTR(Z_CACHE_SLOT_P(fname), fbc);
+	}
+
+	ZEND_ASSERT(fbc->type == ZEND_INTERNAL_FUNCTION);
+	ZEND_ASSERT(fbc->internal_function.light_handler != NULL);
+
+	arg1 = GET_OP2_ZVAL_PTR(BP_VAR_R);
+	fbc->internal_function.light_handler(
+		RETURN_VALUE_USED(opline) ? EX_VAR(opline->result.var) : NULL, arg1);
+	FREE_OP2();
+	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();
+}
+
 ZEND_VM_HOT_TYPE_SPEC_HANDLER(ZEND_ADD, (res_info == MAY_BE_LONG && op1_info == MAY_BE_LONG && op2_info == MAY_BE_LONG), ZEND_ADD_LONG_NO_OVERFLOW, CONST|TMPVARCV, CONST|TMPVARCV, SPEC(NO_CONST_CONST,COMMUTATIVE))
 {
 	USE_OPLINE

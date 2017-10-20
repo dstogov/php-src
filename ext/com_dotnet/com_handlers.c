@@ -272,6 +272,7 @@ static union _zend_function *com_method_get(zend_object **object_ptr, zend_strin
 
 	/* check cache */
 	if (obj->method_cache == NULL || NULL == (fptr = zend_hash_find_ptr(obj->method_cache, name))) {
+		memset(&f, 0, sizeof(f)); \
 		f.type = ZEND_OVERLOADED_FUNCTION;
 		f.num_args = 0;
 		f.arg_info = NULL;
@@ -396,6 +397,7 @@ static union _zend_function *com_constructor_get(zend_object *object)
 	static zend_internal_function c, d, v;
 
 #define POPULATE_CTOR(f, fn)	\
+	memset(&f, 0, sizeof(f)); \
 	f.type = ZEND_INTERNAL_FUNCTION; \
 	f.function_name = obj->ce->name; \
 	f.scope = obj->ce; \

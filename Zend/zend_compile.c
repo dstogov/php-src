@@ -750,12 +750,17 @@ void zend_do_free(znode *op1) /* {{{ */
 	if (op1->op_type == IS_TMP_VAR) {
 		zend_op *opline = &CG(active_op_array)->opcodes[CG(active_op_array)->last-1];
 
-		while (opline->opcode == ZEND_END_SILENCE) {
+		while (opline->opcode == ZEND_END_SILENCE ||
+				opline->opcode == ZEND_EXT_FCALL_END ||
+				opline->opcode == ZEND_OP_DATA) {
 			opline--;
 		}
 
 		if (opline->result_type == IS_TMP_VAR && opline->result.var == op1->u.op.var) {
 			if (opline->opcode == ZEND_BOOL || opline->opcode == ZEND_BOOL_NOT) {
+				return;
+			} else if (opline->opcode == ZEND_LIGHT_ICALL) {
+				opline->result_type = IS_UNUSED;
 				return;
 			}
 		}
@@ -3881,6 +3886,47 @@ int zend_compile_func_array_slice(znode *result, zend_ast_list *args) /* {{{ */
 }
 /* }}} */
 
+int zend_compile_light_func(znode *result, zend_string *lcname, zend_ast_list *args, zend_function *fbc, int type) /* {{{ */
+{
+	zend_op *opline;
+	znode arg1_node;
+
+	if (args->children < fbc->internal_function.required_num_args) {
+		return FAILURE;
+	}
+	if (args->children > fbc->internal_function.num_args
+	  && fbc->internal_function.fn_flags != ZEND_ACC_VARIADIC) {
+		return FAILURE;
+	}
+
+	if (args->children == 0) {
+		arg1_node.op_type = IS_UNUSED;
+	} else {
+		zend_compile_expr(&arg1_node, args->child[0]);
+	}
+
+	// TODO: compile second and following arguments
+
+	opline = zend_emit_op(NULL, ZEND_LIGHT_ICALL, NULL, &arg1_node);
+	opline->extended_value = args->children;
+	opline->op1_type = IS_CONST;
+	LITERAL_STR(opline->op1, zend_string_copy(lcname));
+	zend_alloc_cache_slot(opline->op1.constant);
+
+	if (result) {
+		if (type == BP_VAR_R || type == BP_VAR_IS) {
+			zend_make_tmp_result(result, opline);
+		} else {
+			zend_make_var_result(result, opline);
+		}
+	}
+
+	// TODO: add second and following arguments using OP_DATA instructions
+
+	return SUCCESS;
+}
+/* }}} */
+
 int zend_try_compile_special_func(znode *result, zend_string *lcname, zend_ast_list *args, zend_function *fbc, uint32_t type) /* {{{ */
 {
 	if (fbc->internal_function.handler == ZEND_FN(display_disabled_function)) {
@@ -3932,9 +3978,13 @@ int zend_try_compile_special_func(znode *result, zend_string *lcname, zend_ast_l
 	} else if (zend_string_equals_literal(lcname, "defined")) {
 		return zend_compile_func_defined(result, args);
 	} else if (zend_string_equals_literal(lcname, "chr") && type == BP_VAR_R) {
-		return zend_compile_func_chr(result, args);
+		if (zend_compile_func_chr(result, args) == SUCCESS) {
+			return SUCCESS;
+		}
 	} else if (zend_string_equals_literal(lcname, "ord") && type == BP_VAR_R) {
-		return zend_compile_func_ord(result, args);
+		if (zend_compile_func_ord(result, args) == SUCCESS) {
+			return SUCCESS;
+		}
 	} else if (zend_string_equals_literal(lcname, "call_user_func_array")) {
 		return zend_compile_func_cufa(result, args, lcname);
 	} else if (zend_string_equals_literal(lcname, "call_user_func")) {
@@ -3955,6 +4005,13 @@ int zend_try_compile_special_func(znode *result, zend_string *lcname, zend_ast_l
 		return zend_compile_func_get_args(result, args);
 	} else if (zend_string_equals_literal(lcname, "array_slice")) {
 		return zend_compile_func_array_slice(result, args);
+	}
+
+	if (fbc
+	 && fbc->type == ZEND_INTERNAL_FUNCTION
+	 && fbc->internal_function.light_handler
+	 && args->children <= ZEND_MAX_LIGHT_HANDLER_ARGS) {
+		return zend_compile_light_func(result, lcname, args, fbc, type);
 	} else {
 		return FAILURE;
 	}

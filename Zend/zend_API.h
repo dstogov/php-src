@@ -61,10 +61,14 @@ typedef struct _zend_fcall_info_cache {
 
 #define ZEND_NS_NAME(ns, name)			ns "\\" name
 
+#define ZEND_LIGHT_FUNC                 0x7 /* static abstact final is impossible */
+
 #define ZEND_FN(name) zif_##name
+#define ZEND_LIGHT_FN(name) zlf_##name
 #define ZEND_MN(name) zim_##name
 #define ZEND_NAMED_FUNCTION(name)		void name(INTERNAL_FUNCTION_PARAMETERS)
 #define ZEND_FUNCTION(name)				ZEND_NAMED_FUNCTION(ZEND_FN(name))
+#define ZEND_LIGHT_FUNCTION(name)		void ZEND_FASTCALL ZEND_LIGHT_FN(name)(zval *return_value, zval *arg1)
 #define ZEND_METHOD(classname, name)	ZEND_NAMED_FUNCTION(ZEND_MN(classname##_##name))
 
 #define ZEND_FENTRY(zend_name, name, arg_info, flags)	{ #zend_name, name, arg_info, (uint32_t) (sizeof(arg_info)/sizeof(struct _zend_internal_arg_info)-1), flags },
@@ -74,6 +78,7 @@ typedef struct _zend_fcall_info_cache {
 
 #define ZEND_NAMED_FE(zend_name, name, arg_info)	ZEND_FENTRY(zend_name, name, arg_info, 0)
 #define ZEND_FE(name, arg_info)						ZEND_FENTRY(name, ZEND_FN(name), arg_info, 0)
+#define ZEND_LIGHT_FE(name, arg_info)				ZEND_FENTRY(name, (zif_handler)ZEND_LIGHT_FN(name), NULL, ZEND_LIGHT_FUNC) ZEND_FE(name, arg_info)
 #define ZEND_DEP_FE(name, arg_info)                 ZEND_FENTRY(name, ZEND_FN(name), arg_info, ZEND_ACC_DEPRECATED)
 #define ZEND_FALIAS(name, alias, arg_info)			ZEND_FENTRY(name, ZEND_FN(alias), arg_info, 0)
 #define ZEND_DEP_FALIAS(name, alias, arg_info)		ZEND_FENTRY(name, ZEND_FN(alias), arg_info, ZEND_ACC_DEPRECATED)

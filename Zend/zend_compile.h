@@ -407,8 +407,11 @@ struct _zend_op_array {
 #define ZEND_RETURN_VALUE				0
 #define ZEND_RETURN_REFERENCE			1
 
+#define ZEND_MAX_LIGHT_HANDLER_ARGS     1
+
 /* zend_internal_function_handler */
 typedef void (*zif_handler)(INTERNAL_FUNCTION_PARAMETERS);
+typedef void ZEND_FASTCALL  (*zif_light_handler)(zval *return_value, zval *arg1);
 
 typedef struct _zend_internal_function {
 	/* Common elements */
@@ -424,6 +427,7 @@ typedef struct _zend_internal_function {
 	/* END of common elements */
 
 	zif_handler handler;
+	zif_light_handler light_handler;
 	struct _zend_module_entry *module;
 	void *reserved[ZEND_MAX_RESERVED_RESOURCES];
 } zend_internal_function;

@@ -2175,6 +2175,13 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 	}
 
 	while (ptr->fname) {
+		if (ptr->flags == ZEND_LIGHT_FUNC) {
+			internal_function->light_handler = (zif_light_handler)ptr->handler;
+			ptr++;
+			ZEND_ASSERT(ptr->fname != NULL);
+		} else {
+			internal_function->light_handler = NULL;
+		}
 		fname_len = strlen(ptr->fname);
 		internal_function->handler = ptr->handler;
 		internal_function->function_name = zend_string_init_interned(ptr->fname, fname_len, 1);

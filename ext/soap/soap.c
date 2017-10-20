@@ -652,6 +652,7 @@ PHP_MINIT_FUNCTION(soap)
 	{
 		zend_internal_function fe;
 
+		memset(&fe, 0, sizeof(fe));
 		fe.type = ZEND_INTERNAL_FUNCTION;
 		fe.handler = ZEND_MN(SoapClient___call);
 		fe.function_name = NULL;

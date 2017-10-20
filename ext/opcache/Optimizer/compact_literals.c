@@ -305,6 +305,12 @@ void zend_optimizer_compact_literals(zend_op_array *op_array, zend_optimizer_ctx
 						opline->op2.num = cache_size;
 						cache_size += sizeof(void *);
 					}
+				case ZEND_LIGHT_ICALL:
+					LITERAL_INFO(opline->op1.constant, LITERAL_FUNC, 1, 1, 1);
+					if (opline->op2_type == IS_CONST) {
+						LITERAL_INFO(opline->op2.constant, LITERAL_VALUE, 1, 0, 1);
+					}
+					break;
 				default:
 					if (opline->op1_type == IS_CONST) {
 						LITERAL_INFO(opline->op1.constant, LITERAL_VALUE, 1, 0, 1);
