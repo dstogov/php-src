@@ -163,7 +163,7 @@ int zend_shared_alloc_startup(size_t requested_size)
 	ZSMMG(shared_free) = requested_size; /* goes to tmp_shared_globals.shared_free */
 
 #ifndef ZEND_WIN32
-	zend_shared_alloc_create_lock(ZCG(accel_directives).lockfile_path);
+	zend_shared_alloc_create_lock(ZSTR_VAL(ZCG(accel_directives).lockfile_path));
 #else
 	zend_shared_alloc_create_lock();
 #endif

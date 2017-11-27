@@ -654,7 +654,7 @@ static int lsapi_activate_user_ini_basic_checks(_lsapi_activate_user_ini_ctx *ct
     int rc = SUCCESS;
     fn_activate_user_ini_chain_t *fn_next = next;
 
-    if (!PG(user_ini_filename) || !*PG(user_ini_filename)) {
+    if (!PG(user_ini_filename) || !*ZSTR_VAL(PG(user_ini_filename))) {
         return SUCCESS;
     }
 
@@ -758,8 +758,8 @@ static void walk_down_the_path_callback(char* begin,
     _lsapi_activate_user_ini_ctx *ctx = data;
     char tmp = end[0];
     end[0] = 0;
-    DEBUG_MESSAGE("parsing %s%c%s", begin, DEFAULT_SLASH, PG(user_ini_filename));
-    php_parse_user_ini_file(begin, PG(user_ini_filename), &ctx->entry->user_config);
+    DEBUG_MESSAGE("parsing %s%c%s", begin, DEFAULT_SLASH, PG(user_ini_filename) ? ZSTR_VAL(PG(user_ini_filename)) : NULL);
+    php_parse_user_ini_file(begin, PG(user_ini_filename) ? ZSTR_VAL(PG(user_ini_filename)) : NULL, &ctx->entry->user_config);
     end[0] = tmp;
 }
 
@@ -782,7 +782,7 @@ static int lsapi_activate_user_ini_walk_down_the_path(_lsapi_activate_user_ini_c
                 strncmp(ctx->path, ctx->doc_root, docroot_len) != 0;
 
         if (is_outside_of_docroot) {
-            php_parse_user_ini_file(ctx->path, PG(user_ini_filename), 
+            php_parse_user_ini_file(ctx->path, PG(user_ini_filename) ? ZSTR_VAL(PG(user_ini_filename)) : NULL, 
                                     &ctx->entry->user_config);
         } else {
             walk_down_the_path(ctx->doc_root, ctx->path,

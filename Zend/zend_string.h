@@ -42,18 +42,123 @@ ZEND_API void zend_interned_strings_set_request_storage_handlers(zend_new_intern
 ZEND_API void zend_interned_strings_set_permanent_storage_copy_handlers(zend_string_copy_storage_func_t copy_handler, zend_string_copy_storage_func_t restore_handler);
 ZEND_API void zend_interned_strings_switch_storage(zend_bool request);
 
-ZEND_API extern zend_string  *zend_empty_string;
-ZEND_API extern zend_string  *zend_one_char_string[256];
 ZEND_API extern zend_string **zend_known_strings;
 
 END_EXTERN_C()
 
+/* Packed strings */
+
+#define MAX_PACKED_STRING_LEN (sizeof(void*)-2)
+
+typedef struct _zend_packed_string {
+	ZEND_ENDIAN_LOHI(
+		uint8_t lowbyte,
+		char val[MAX_PACKED_STRING_LEN + 1]);
+} zend_packed_string;
+
+static zend_always_inline zend_ulong zend_short_hash_func(const char *str, size_t len)
+{
+	zend_ulong hash = Z_UL(5381);
+
+	ZEND_ASSERT(len <= MAX_PACKED_STRING_LEN);
+
+#if SIZEOF_ZEND_LONG == 8
+	switch (len) {
+		case 6: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 5: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 4: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 3: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 2: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 1: hash = ((hash << 5) + hash) + *str++; break;
+		case 0: break;
+EMPTY_SWITCH_DEFAULT_CASE()
+	}
+	/* Hash value can't be zero, so we always set the high bit */
+	return hash | Z_UL(0x8000000000000000);
+#elif SIZEOF_ZEND_LONG == 4
+	switch (len) {
+		case 2: hash = ((hash << 5) + hash) + *str++; /* fallthrough... */
+		case 1: hash = ((hash << 5) + hash) + *str++; break;
+		case 0: break;
+EMPTY_SWITCH_DEFAULT_CASE()
+	}
+	return hash | Z_UL(0x80000000);
+#else
+# error "Unknown SIZEOF_ZEND_LONG"
+#endif
+}
+
+static zend_always_inline zend_string *zend_new_packed_string_len(size_t len)
+{
+	return (zend_string*)(uintptr_t)((len << 1) | 1);
+}
+
+static zend_always_inline zend_string *zend_new_packed_string_0(void)
+{
+	return (zend_string*)(uintptr_t)1;
+}
+
+static zend_always_inline zend_string *zend_new_packed_string_1(char c)
+{
+	uintptr_t ret;
+	zend_packed_string *dst = (zend_packed_string*)&ret;
+	size_t i = 1;
+
+	dst->val[0] = c;
+	while (i < MAX_PACKED_STRING_LEN + 1) {
+		dst->val[i] = 0;
+		i++;
+	}
+	dst->lowbyte = (1 << 1) + 1;
+	return (zend_string*)ret;
+}
+
+static zend_always_inline zend_string *zend_new_packed_string(const char *s, size_t len)
+{
+	uintptr_t ret;
+	zend_packed_string *dst = (zend_packed_string*)&ret;
+	size_t i = 0;
+
+	ZEND_ASSERT(len <= MAX_PACKED_STRING_LEN);
+	while (i < len) {
+		dst->val[i] = s[i];
+		i++;
+	}
+	while (i < MAX_PACKED_STRING_LEN + 1) {
+		dst->val[i] = 0;
+		i++;
+	}
+	dst->lowbyte = (len << 1) + 1;
+	return (zend_string*)ret;
+}
+
+#define ZSTR_IS_PACKED(s)   ((uintptr_t)(s) & 1)
+#define ZSTR_PACKED_VAL(s)  ((char*)((zend_packed_string*)&(s))->val)
+#define ZSTR_PACKED_LEN(s)  ((((uintptr_t)(s)) & 0xff) >> 1)
+#define ZSTR_PACKED_H(s)    zend_short_hash_func(ZSTR_PACKED_VAL(s), ZSTR_PACKED_LEN(s))
+#define ZSTR_PACKED_SET_LEN(s, new_len) do { \
+		s = (zend_string*)(((uintptr_t)(s) & ~0xff) | ((new_len) << 1) | 1); \
+	} while (0)
+
 /* Shortcuts */
 
-#define ZSTR_VAL(zstr)  (zstr)->val
-#define ZSTR_LEN(zstr)  (zstr)->len
-#define ZSTR_H(zstr)    (zstr)->h
-#define ZSTR_HASH(zstr) zend_string_hash_val(zstr)
+#define ZSTR_VAL(zstr) \
+	(ZSTR_IS_PACKED(zstr) ? ZSTR_PACKED_VAL(zstr) : (zstr)->val)
+#define ZSTR_LEN(zstr) \
+	(ZSTR_IS_PACKED(zstr) ? ZSTR_PACKED_LEN(zstr) : (zstr)->len)
+#define ZSTR_H(zstr) \
+	(ZSTR_IS_PACKED(zstr) ? ZSTR_PACKED_H(zstr) : (zstr)->h)
+#define ZSTR_HASH(zstr) \
+	(ZSTR_IS_PACKED(zstr) ? ZSTR_PACKED_H(zstr) : zend_string_hash_val(zstr))
+#define ZSTR_SET_LEN(zstr, new_len) do { \
+		if (ZSTR_IS_PACKED(zstr)) { \
+			ZSTR_PACKED_SET_LEN(zstr, new_len); \
+		} else { \
+			(zstr)->len = (new_len); \
+		} \
+	} while (0)
+#define ZSTR_SET_H(zstr, new_h) \
+	(ZSTR_IS_PACKED(zstr) ? (new_h) : ((zstr)->h = (new_h)))
 
 /* Compatibility macros */
 
@@ -66,11 +171,11 @@ END_EXTERN_C()
 
 /*---*/
 
-#define ZSTR_IS_INTERNED(s)					(GC_FLAGS(s) & IS_STR_INTERNED)
+#define ZSTR_IS_INTERNED(s)	(ZSTR_IS_PACKED(s) || (GC_FLAGS(s) & IS_STR_INTERNED))
 
-#define ZSTR_EMPTY_ALLOC() zend_empty_string
-#define ZSTR_CHAR(c) zend_one_char_string[c]
-#define ZSTR_KNOWN(idx) zend_known_strings[idx]
+#define ZSTR_EMPTY_ALLOC() zend_new_packed_string_0()
+#define ZSTR_CHAR(c)       zend_new_packed_string_1(c)
+#define ZSTR_KNOWN(idx)    zend_known_strings[idx]
 
 #define _ZSTR_HEADER_SIZE XtOffsetOf(zend_string, val)
 
@@ -81,7 +186,7 @@ END_EXTERN_C()
 	GC_SET_REFCOUNT(str, 1); \
 	GC_TYPE_INFO(str) = IS_STRING; \
 	zend_string_forget_hash_val(str); \
-	ZSTR_LEN(str) = _len; \
+	ZSTR_SET_LEN(str, _len); \
 } while (0)
 
 #define ZSTR_ALLOCA_INIT(str, s, len, use_heap) do { \
@@ -97,14 +202,14 @@ END_EXTERN_C()
 static zend_always_inline zend_ulong zend_string_hash_val(zend_string *s)
 {
 	if (!ZSTR_H(s)) {
-		ZSTR_H(s) = zend_hash_func(ZSTR_VAL(s), ZSTR_LEN(s));
+		ZSTR_SET_H(s, zend_hash_func(ZSTR_VAL(s), ZSTR_LEN(s)));
 	}
 	return ZSTR_H(s);
 }
 
 static zend_always_inline void zend_string_forget_hash_val(zend_string *s)
 {
-	ZSTR_H(s) = 0;
+	ZSTR_SET_H(s, 0);
 }
 
 static zend_always_inline uint32_t zend_string_refcount(const zend_string *s)
@@ -133,8 +238,13 @@ static zend_always_inline uint32_t zend_string_delref(zend_string *s)
 
 static zend_always_inline zend_string *zend_string_alloc(size_t len, int persistent)
 {
-	zend_string *ret = (zend_string *)pemalloc(ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(len)), persistent);
+	zend_string *ret;
 
+	if (len <= MAX_PACKED_STRING_LEN) {
+		return zend_new_packed_string_len(len);
+	}
+
+	ret = (zend_string *)pemalloc(ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(len)), persistent);
 	GC_SET_REFCOUNT(ret, 1);
 #if 1
 	/* optimized single assignment */
@@ -145,7 +255,7 @@ static zend_always_inline zend_string *zend_string_alloc(size_t len, int persist
 	GC_INFO(ret) = 0;
 #endif
 	zend_string_forget_hash_val(ret);
-	ZSTR_LEN(ret) = len;
+	ZSTR_SET_LEN(ret, len);
 	return ret;
 }
 
@@ -163,7 +273,7 @@ static zend_always_inline zend_string *zend_string_safe_alloc(size_t n, size_t m
 	GC_INFO(ret) = 0;
 #endif
 	zend_string_forget_hash_val(ret);
-	ZSTR_LEN(ret) = (n * m) + l;
+	ZSTR_SET_LEN(ret, (n * m) + l);
 	return ret;
 }
 
@@ -200,7 +310,7 @@ static zend_always_inline zend_string *zend_string_realloc(zend_string *s, size_
 	if (!ZSTR_IS_INTERNED(s)) {
 		if (EXPECTED(GC_REFCOUNT(s) == 1)) {
 			ret = (zend_string *)perealloc(s, ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(len)), persistent);
-			ZSTR_LEN(ret) = len;
+			ZSTR_SET_LEN(ret, len);
 			zend_string_forget_hash_val(ret);
 			return ret;
 		} else {
@@ -220,7 +330,7 @@ static zend_always_inline zend_string *zend_string_extend(zend_string *s, size_t
 	if (!ZSTR_IS_INTERNED(s)) {
 		if (EXPECTED(GC_REFCOUNT(s) == 1)) {
 			ret = (zend_string *)perealloc(s, ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(len)), persistent);
-			ZSTR_LEN(ret) = len;
+			ZSTR_SET_LEN(ret, len);
 			zend_string_forget_hash_val(ret);
 			return ret;
 		} else {
@@ -240,7 +350,7 @@ static zend_always_inline zend_string *zend_string_truncate(zend_string *s, size
 	if (!ZSTR_IS_INTERNED(s)) {
 		if (EXPECTED(GC_REFCOUNT(s) == 1)) {
 			ret = (zend_string *)perealloc(s, ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(len)), persistent);
-			ZSTR_LEN(ret) = len;
+			ZSTR_SET_LEN(ret, len);
 			zend_string_forget_hash_val(ret);
 			return ret;
 		} else {
@@ -259,7 +369,7 @@ static zend_always_inline zend_string *zend_string_safe_realloc(zend_string *s, 
 	if (!ZSTR_IS_INTERNED(s)) {
 		if (GC_REFCOUNT(s) == 1) {
 			ret = (zend_string *)safe_perealloc(s, n, m, ZEND_MM_ALIGNED_SIZE(_ZSTR_STRUCT_SIZE(l)), persistent);
-			ZSTR_LEN(ret) = (n * m) + l;
+			ZSTR_SET_LEN(ret, (n * m) + l);
 			zend_string_forget_hash_val(ret);
 			return ret;
 		} else {
@@ -339,6 +449,10 @@ static zend_always_inline zend_bool zend_string_equals(zend_string *s1, zend_str
 static zend_always_inline zend_ulong zend_inline_hash_func(const char *str, size_t len)
 {
 	zend_ulong hash = Z_UL(5381);
+
+//	if (len <= MAX_PACKED_STRING_LEN) {
+//		return (zend_ulong)zend_new_packed_string(str, len);
+//	}
 
 	/* variant with the hash unrolled eight times */
 	for (; len >= 8; len -= 8) {

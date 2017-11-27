@@ -160,7 +160,7 @@ static void do_from_to_zval_err(struct err_s *err,
 	}
 
 	if (path.s && ZSTR_LEN(path.s) > 3) {
-		ZSTR_LEN(path.s) -= 3;
+		ZSTR_SET_LEN(path.s, ZSTR_LEN(path.s) - 3);
 	}
 	smart_str_0(&path);
 
@@ -570,7 +570,7 @@ static void to_zval_read_sin_addr(const char *data, zval *zv, res_context *ctx)
 		return;
 	}
 
-	Z_STRLEN_P(zv) = strlen(Z_STRVAL_P(zv));
+	ZSTR_SET_LEN(Z_STR_P(zv), strlen(Z_STRVAL_P(zv)));
 }
 static const field_descriptor descriptors_sockaddr_in[] = {
 		{"family", sizeof("family"), 0, offsetof(struct sockaddr_in, sin_family), from_zval_write_sa_family, to_zval_read_sa_family},
@@ -621,7 +621,7 @@ static void to_zval_read_sin6_addr(const char *data, zval *zv, res_context *ctx)
 		return;
 	}
 
-	Z_STRLEN_P(zv) = strlen(Z_STRVAL_P(zv));
+	ZSTR_SET_LEN(Z_STR_P(zv), strlen(Z_STRVAL_P(zv)));
 }
 static const field_descriptor descriptors_sockaddr_in6[] = {
 		{"family", sizeof("family"), 0, offsetof(struct sockaddr_in6, sin6_family), from_zval_write_sa_family, to_zval_read_sa_family},

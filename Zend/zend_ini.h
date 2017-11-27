@@ -163,6 +163,8 @@ ZEND_API ZEND_INI_MH(OnUpdateLongGEZero);
 ZEND_API ZEND_INI_MH(OnUpdateReal);
 ZEND_API ZEND_INI_MH(OnUpdateString);
 ZEND_API ZEND_INI_MH(OnUpdateStringUnempty);
+ZEND_API ZEND_INI_MH(OnUpdateStr);
+ZEND_API ZEND_INI_MH(OnUpdateStrUnempty);
 END_EXTERN_C()
 
 #define ZEND_INI_DISPLAY_ORIG	1

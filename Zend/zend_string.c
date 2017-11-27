@@ -40,8 +40,6 @@ static zend_string_init_interned_func_t interned_string_init_request_handler = z
 static zend_string_copy_storage_func_t interned_string_copy_storage = NULL;
 static zend_string_copy_storage_func_t interned_string_restore_storage = NULL;
 
-ZEND_API zend_string  *zend_empty_string = NULL;
-ZEND_API zend_string  *zend_one_char_string[256];
 ZEND_API zend_string **zend_known_strings = NULL;
 
 ZEND_API zend_ulong zend_hash_func(const char *str, size_t len)
@@ -70,7 +68,6 @@ static void zend_init_interned_strings_ht(HashTable *interned_strings, int perma
 
 ZEND_API void zend_interned_strings_init(void)
 {
-	char s[2];
 	int i;
 	zend_string *str;
 
@@ -78,17 +75,6 @@ ZEND_API void zend_interned_strings_init(void)
 
 	zend_new_interned_string = zend_new_interned_string_permanent;
 	zend_string_init_interned = zend_string_init_interned_permanent;
-
-	/* interned empty string */
-	str = zend_string_alloc(sizeof("")-1, 1);
-	ZSTR_VAL(str)[0] = '\000';
-	zend_empty_string = zend_new_interned_string_permanent(str);
-
-	s[1] = 0;
-	for (i = 0; i < 256; i++) {
-		s[0] = i;
-		zend_one_char_string[i] = zend_new_interned_string_permanent(zend_string_init(s, 1, 1));
-	}
 
 	/* known strings */
 	zend_known_strings = pemalloc(sizeof(zend_string*) * ((sizeof(known_strings) / sizeof(known_strings[0]) - 1)), 1);
@@ -150,6 +136,9 @@ static zend_always_inline zend_string *zend_add_interned_string(zend_string *str
 
 ZEND_API zend_string *zend_interned_string_find_permanent(zend_string *str)
 {
+	if (ZSTR_IS_PACKED(str)) {
+		return str;
+	}
 	zend_string_hash_val(str);
 	return zend_interned_string_ht_lookup(str, &interned_strings_permanent);
 }
@@ -174,7 +163,7 @@ static zend_string *zend_new_interned_string_permanent(zend_string *str)
 		zend_ulong h = ZSTR_H(str);
 		zend_string_delref(str);
 		str = zend_string_init(ZSTR_VAL(str), ZSTR_LEN(str), 1);
-		ZSTR_H(str) = h;
+		ZSTR_SET_H(str, h);
 	}
 
 	return zend_add_interned_string(str, &interned_strings_permanent, IS_STR_PERMANENT);
@@ -209,7 +198,7 @@ static zend_string *zend_new_interned_string_request(zend_string *str)
 		zend_ulong h = ZSTR_H(str);
 		zend_string_delref(str);
 		str = zend_string_init(ZSTR_VAL(str), ZSTR_LEN(str), 0);
-		ZSTR_H(str) = h;
+		ZSTR_SET_H(str, h);
 	}
 
 	ret = zend_add_interned_string(str, &CG(interned_strings), 0);
@@ -220,24 +209,34 @@ static zend_string *zend_new_interned_string_request(zend_string *str)
 static zend_string *zend_string_init_interned_permanent(const char *str, size_t size, int permanent)
 {
 	zend_string *ret;
-	zend_ulong h = zend_inline_hash_func(str, size);
+	zend_ulong h;
 
+	if (size <= MAX_PACKED_STRING_LEN) {
+		return zend_new_packed_string(str, size);
+	}
+
+	h = zend_inline_hash_func(str, size);
 	ret = zend_interned_string_ht_lookup_ex(h, str, size, &interned_strings_permanent);
 	if (ret) {
 		return ret;
 	}
 
 	ret = zend_string_init(str, size, permanent);
-	ZSTR_H(ret) = h;
+	ZSTR_SET_H(ret, h);
 	return zend_add_interned_string(ret, &interned_strings_permanent, IS_STR_PERMANENT);
 }
 
 static zend_string *zend_string_init_interned_request(const char *str, size_t size, int permanent)
 {
 	zend_string *ret;
-	zend_ulong h = zend_inline_hash_func(str, size);
+	zend_ulong h;
+
+	if (size <= MAX_PACKED_STRING_LEN) {
+		return zend_new_packed_string(str, size);
+	}
 
 	/* Check for permanent strings, the table is readonly at this point. */
+	h = zend_inline_hash_func(str, size);
 	ret = zend_interned_string_ht_lookup_ex(h, str, size, &interned_strings_permanent);
 	if (ret) {
 		return ret;
@@ -249,7 +248,7 @@ static zend_string *zend_string_init_interned_request(const char *str, size_t si
 	}
 
 	ret = zend_string_init(str, size, permanent);
-	ZSTR_H(ret) = h;
+	ZSTR_SET_H(ret, h);
 
 	/* Create a short living interned, freed after the request. */
 	return zend_add_interned_string(ret, &CG(interned_strings), 0);

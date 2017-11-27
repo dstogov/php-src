@@ -102,13 +102,13 @@ static zend_always_inline zend_string *smart_str_extract(smart_str *str) {
 static zend_always_inline void smart_str_appendc_ex(smart_str *dest, char ch, zend_bool persistent) {
 	size_t new_len = smart_str_alloc(dest, 1, persistent);
 	ZSTR_VAL(dest->s)[new_len - 1] = ch;
-	ZSTR_LEN(dest->s) = new_len;
+	ZSTR_SET_LEN(dest->s, new_len);
 }
 
 static zend_always_inline void smart_str_appendl_ex(smart_str *dest, const char *str, size_t len, zend_bool persistent) {
 	size_t new_len = smart_str_alloc(dest, len, persistent);
 	memcpy(ZSTR_VAL(dest->s) + ZSTR_LEN(dest->s), str, len);
-	ZSTR_LEN(dest->s) = new_len;
+	ZSTR_SET_LEN(dest->s, new_len);
 }
 
 static zend_always_inline void smart_str_append_ex(smart_str *dest, const zend_string *src, zend_bool persistent) {

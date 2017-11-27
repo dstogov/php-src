@@ -145,7 +145,7 @@
 	} else { \
 		smart_str_alloc(((smart_str *)(xbuf)), (count), 0); \
 		memset(ZSTR_VAL(((smart_str *)(xbuf))->s) + ZSTR_LEN(((smart_str *)(xbuf))->s), (ch), (count)); \
-		ZSTR_LEN(((smart_str *)(xbuf))->s) += (count); \
+		ZSTR_SET_LEN(((smart_str *)(xbuf))->s, ZSTR_LEN(((smart_str *)(xbuf))->s) + (count)); \
 	} \
 } while (0);
 

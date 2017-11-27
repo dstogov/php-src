@@ -4051,7 +4051,7 @@ carry_on:
 	}
 
 	ZSTR_VAL(buf)[len] = '\0';
-	ZSTR_LEN(buf) = len;
+	ZSTR_SET_LEN(buf, len);
 	RETVAL_STR(buf);
 }
 /* }}}*/

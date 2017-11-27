@@ -315,8 +315,8 @@ static inline char *get_default_content_type(uint32_t prefix_len, uint32_t *len)
 		mimetype_len = sizeof(SAPI_DEFAULT_MIMETYPE) - 1;
 	}
 	if (SG(default_charset)) {
-		charset = SG(default_charset);
-		charset_len = (uint32_t)strlen(SG(default_charset));
+		charset = ZSTR_VAL(SG(default_charset));
+		charset_len = (uint32_t)ZSTR_LEN(SG(default_charset));
 	} else {
 		charset = SAPI_DEFAULT_CHARSET;
 		charset_len = sizeof(SAPI_DEFAULT_CHARSET) - 1;
@@ -374,7 +374,7 @@ SAPI_API size_t sapi_apply_default_charset(char **mimetype, size_t len)
 {
 	char *charset, *newtype;
 	size_t newlen;
-	charset = SG(default_charset) ? SG(default_charset) : SAPI_DEFAULT_CHARSET;
+	charset = SG(default_charset) ? ZSTR_VAL(SG(default_charset)) : SAPI_DEFAULT_CHARSET;
 
 	if (*mimetype != NULL) {
 		if (*charset && strncmp(*mimetype, "text/", 5) == 0 && strstr(*mimetype, "charset=") == NULL) {

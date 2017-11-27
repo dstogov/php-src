@@ -1867,7 +1867,7 @@ PHP_FUNCTION(openssl_spki_new)
 
 	s = zend_string_alloc(strlen(spkac) + strlen(spkstr), 0);
 	sprintf(ZSTR_VAL(s), "%s%s", spkac, spkstr);
-	ZSTR_LEN(s) = strlen(ZSTR_VAL(s));
+	ZSTR_SET_LEN(s, strlen(ZSTR_VAL(s)));
 	OPENSSL_free(spkstr);
 
 	RETVAL_STR(s);
@@ -4918,7 +4918,7 @@ PHP_FUNCTION(openssl_dh_compute_key)
 	len = DH_compute_key((unsigned char*)ZSTR_VAL(data), pub, dh);
 
 	if (len >= 0) {
-		ZSTR_LEN(data) = len;
+		ZSTR_SET_LEN(data, len);
 		ZSTR_VAL(data)[len] = 0;
 		RETVAL_STR(data);
 	} else {
@@ -5916,7 +5916,7 @@ PHP_FUNCTION(openssl_sign)
 			EVP_SignFinal(md_ctx, (unsigned char*)ZSTR_VAL(sigbuf), &siglen, pkey)) {
 		zval_dtor(signature);
 		ZSTR_VAL(sigbuf)[siglen] = '\0';
-		ZSTR_LEN(sigbuf) = siglen;
+		ZSTR_SET_LEN(sigbuf, siglen);
 		ZVAL_NEW_STR(signature, sigbuf);
 		RETVAL_TRUE;
 	} else {
@@ -6307,7 +6307,7 @@ PHP_FUNCTION(openssl_digest)
 			EVP_DigestFinal (md_ctx, (unsigned char *)ZSTR_VAL(sigbuf), &siglen)) {
 		if (raw_output) {
 			ZSTR_VAL(sigbuf)[siglen] = '\0';
-			ZSTR_LEN(sigbuf) = siglen;
+			ZSTR_SET_LEN(sigbuf, siglen);
 			RETVAL_STR(sigbuf);
 		} else {
 			int digest_str_len = siglen * 2;
@@ -6574,7 +6574,7 @@ PHP_FUNCTION(openssl_encrypt)
 		outlen += i;
 		if (options & OPENSSL_RAW_DATA) {
 			ZSTR_VAL(outbuf)[outlen] = '\0';
-			ZSTR_LEN(outbuf) = outlen;
+			ZSTR_SET_LEN(outbuf, outlen);
 			RETVAL_STR(outbuf);
 		} else {
 			zend_string *base64_str;
@@ -6590,7 +6590,7 @@ PHP_FUNCTION(openssl_encrypt)
 			if (EVP_CIPHER_CTX_ctrl(cipher_ctx, mode.aead_get_tag_flag, tag_len, ZSTR_VAL(tag_str)) == 1) {
 				zval_dtor(tag);
 				ZSTR_VAL(tag_str)[tag_len] = '\0';
-				ZSTR_LEN(tag_str) = tag_len;
+				ZSTR_SET_LEN(tag_str, tag_len);
 				ZVAL_NEW_STR(tag, tag_str);
 			} else {
 				php_error_docref(NULL, E_WARNING, "Retrieving verification tag failed");
@@ -6690,7 +6690,7 @@ PHP_FUNCTION(openssl_decrypt)
 			EVP_DecryptFinal(cipher_ctx, (unsigned char *)ZSTR_VAL(outbuf) + outlen, &i)) {
 		outlen += i;
 		ZSTR_VAL(outbuf)[outlen] = '\0';
-		ZSTR_LEN(outbuf) = outlen;
+		ZSTR_SET_LEN(outbuf, outlen);
 		RETVAL_STR(outbuf);
 	} else {
 		php_openssl_store_errors();

@@ -282,7 +282,7 @@ static zend_string *unserialize_str(const unsigned char **p, size_t len, size_t 
 		(*p)++;
 	}
 	ZSTR_VAL(str)[i] = 0;
-	ZSTR_LEN(str) = i;
+	ZSTR_SET_LEN(str, i);
 	return str;
 }
 

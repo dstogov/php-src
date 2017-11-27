@@ -673,9 +673,10 @@ static ZEND_COLD void zend_verify_type_error_common(
 			*need_kind = ZSTR_VAL(ce->name);
 		} else {
 			/* We don't know whether it's a class or interface, assume it's a class */
+			zend_string *str = ZEND_TYPE_NAME(arg_info->type);
 
 			*need_msg = "be an instance of ";
-			*need_kind = ZSTR_VAL(ZEND_TYPE_NAME(arg_info->type));
+			*need_kind = ZSTR_VAL(str);
 		}
 	} else {
 		switch (ZEND_TYPE_CODE(arg_info->type)) {

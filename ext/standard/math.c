@@ -1230,7 +1230,7 @@ PHPAPI zend_string *_php_math_number_format_ex(double d, int dec, char *dec_poin
 		*t-- = '-';
 	}
 
-	ZSTR_LEN(res) = reslen;
+	ZSTR_SET_LEN(res, reslen);
 	zend_string_release(tmpbuf);
 	return res;
 }

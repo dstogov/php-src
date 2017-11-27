@@ -95,13 +95,13 @@ struct _php_core_globals {
 	char *auto_prepend_file;
 	char *auto_append_file;
 
-	char *input_encoding;
+	zend_string *input_encoding;
 	char *internal_encoding;
 	char *output_encoding;
 
 	arg_separators arg_separator;
 
-	char *variables_order;
+	zend_string *variables_order;
 
 	HashTable rfc1867_protected_variables;
 
@@ -120,7 +120,7 @@ struct _php_core_globals {
 	zend_bool auto_globals_jit;
 
 	char *docref_root;
-	char *docref_ext;
+	zend_string *docref_ext;
 
 	zend_bool html_errors;
 	zend_bool xmlrpc_errors;
@@ -153,7 +153,7 @@ struct _php_core_globals {
 	zend_long max_input_vars;
 	zend_bool in_user_include;
 
-	char *user_ini_filename;
+	zend_string *user_ini_filename;
 	zend_long user_ini_cache_ttl;
 
 	char *request_order;

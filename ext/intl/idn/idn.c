@@ -164,7 +164,7 @@ static void php_intl_idn_to_46(INTERNAL_FUNCTION_PARAMETERS,
 	}
 
 	ZSTR_VAL(buffer)[len] = '\0';
-	ZSTR_LEN(buffer) = len;
+	ZSTR_SET_LEN(buffer, len);
 
 	if (info.errors == 0) {
 		RETVAL_STR(buffer);

@@ -653,7 +653,7 @@ php_formatted_print(zend_execute_data *execute_data, int use_array, int format_o
 
 	/* possibly, we have to make sure we have room for the terminating null? */
 	ZSTR_VAL(result)[outpos]=0;
-	ZSTR_LEN(result) = outpos;
+	ZSTR_SET_LEN(result, outpos);
 	return result;
 }
 /* }}} */

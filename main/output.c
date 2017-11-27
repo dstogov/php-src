@@ -110,7 +110,8 @@ static void php_output_header(void)
 	if (!SG(headers_sent)) {
 		if (!OG(output_start_filename)) {
 			if (zend_is_compiling()) {
-				OG(output_start_filename) = ZSTR_VAL(zend_get_compiled_filename());
+				zend_string *str = zend_get_compiled_filename();
+				OG(output_start_filename) = ZSTR_VAL(str);
 				OG(output_start_lineno) = zend_get_compiled_lineno();
 			} else if (zend_is_executing()) {
 				OG(output_start_filename) = zend_get_executed_filename();

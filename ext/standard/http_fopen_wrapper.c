@@ -904,7 +904,7 @@ finish:
 #define CHECK_FOR_CNTRL_CHARS(val) { \
 	if (val) { \
 		unsigned char *s, *e; \
-		ZSTR_LEN(val) = php_url_decode(ZSTR_VAL(val), ZSTR_LEN(val)); \
+		ZSTR_SET_LEN(val, php_url_decode(ZSTR_VAL(val), ZSTR_LEN(val))); \
 		s = (unsigned char*)ZSTR_VAL(val); e = s + ZSTR_LEN(val); \
 		while (s < e) { \
 			if (iscntrl(*s)) { \

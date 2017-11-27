@@ -1030,7 +1030,7 @@ static int phpdbg_process_print(int fd, int type, const char *tag, const char *m
 						efree(stream_buf);
 						PHPDBG_G(in_script_xml) = type;
 					}
-					encoded = php_escape_html_entities((unsigned char *) msg, msglen, 0, ENT_NOQUOTES, PG(internal_encoding) && PG(internal_encoding)[0] ? PG(internal_encoding) : (SG(default_charset) ? SG(default_charset) : "UTF-8"));
+					encoded = php_escape_html_entities((unsigned char *) msg, msglen, 0, ENT_NOQUOTES, PG(internal_encoding) && PG(internal_encoding)[0] ? PG(internal_encoding) : (SG(default_charset) ? ZSTR_VAL(SG(default_charset)) : "UTF-8"));
 					buflen = ZSTR_LEN(encoded);
 					memcpy(buf = emalloc(buflen + 1), ZSTR_VAL(encoded), buflen);
 					phpdbg_encode_ctrl_chars(&buf, &buflen);

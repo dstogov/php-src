@@ -1736,7 +1736,7 @@ convert_libmagic_pattern(zval *pattern, char *val, int len, int options)
 		ZSTR_VAL(t)[j++] = 'm';
 
 	ZSTR_VAL(t)[j]='\0';
-	ZSTR_LEN(t) = j;
+	ZSTR_SET_LEN(t, j);
 
 	ZVAL_NEW_STR(pattern, t);
 }

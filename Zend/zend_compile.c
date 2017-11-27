@@ -1264,15 +1264,17 @@ static void zend_mark_function_as_generator() /* {{{ */
 
 		if (ZEND_TYPE_CODE(return_info.type) != IS_ITERABLE) {
 			const char *msg = "Generators may only declare a return type of Generator, Iterator, Traversable, or iterable, %s is not permitted";
+			zend_string *str;
 			
 			if (!ZEND_TYPE_IS_CLASS(return_info.type)) {
 				zend_error_noreturn(E_COMPILE_ERROR, msg, zend_get_type_by_const(ZEND_TYPE_CODE(return_info.type)));
 			}
 
-			if (!zend_string_equals_literal_ci(ZEND_TYPE_NAME(return_info.type), "Traversable")
-				&& !zend_string_equals_literal_ci(ZEND_TYPE_NAME(return_info.type), "Iterator")
-				&& !zend_string_equals_literal_ci(ZEND_TYPE_NAME(return_info.type), "Generator")) {
-				zend_error_noreturn(E_COMPILE_ERROR, msg, ZSTR_VAL(ZEND_TYPE_NAME(return_info.type)));
+			str = ZEND_TYPE_NAME(return_info.type);
+			if (!zend_string_equals_literal_ci(str, "Traversable")
+				&& !zend_string_equals_literal_ci(str, "Iterator")
+				&& !zend_string_equals_literal_ci(str, "Generator")) {
+				zend_error_noreturn(E_COMPILE_ERROR, msg, ZSTR_VAL(str));
 			}
 		}
 	}
@@ -1481,12 +1483,14 @@ static void zend_ensure_valid_class_fetch_type(uint32_t fetch_type) /* {{{ */
 static zend_bool zend_try_compile_const_expr_resolve_class_name(zval *zv, zend_ast *class_ast, zend_ast *name_ast, zend_bool constant) /* {{{ */
 {
 	uint32_t fetch_type;
+	zend_string *str;
 
 	if (name_ast->kind != ZEND_AST_ZVAL) {
 		return 0;
 	}
 
-	if (!zend_string_equals_literal_ci(zend_ast_get_str(name_ast), "class")) {
+	str = zend_ast_get_str(name_ast);
+	if (!zend_string_equals_literal_ci(str, "class")) {
 		return 0;
 	}
 
@@ -3955,7 +3959,8 @@ void zend_compile_call(znode *result, zend_ast *ast, uint32_t type) /* {{{ */
 	{
 		zend_bool runtime_resolution = zend_compile_function_name(&name_node, name_ast);
 		if (runtime_resolution) {
-			if (zend_string_equals_literal_ci(zend_ast_get_str(name_ast), "assert")) {
+			zend_string *str = zend_ast_get_str(name_ast);
+			if (zend_string_equals_literal_ci(str, "assert")) {
 				zend_compile_assert(result, zend_ast_get_list(args_ast), Z_STR(name_node.u.constant), NULL);
 			} else {
 				zend_compile_ns_call(result, &name_node, args_ast);
@@ -5386,9 +5391,10 @@ static void zend_compile_typename(zend_ast *ast, zend_arg_info *arg_info, zend_b
 
 		if (type != 0) {
 			if ((ast->attr & ZEND_NAME_NOT_FQ) != ZEND_NAME_NOT_FQ) {
+				zend_string *str = zend_string_tolower(class_name);
 				zend_error_noreturn(E_COMPILE_ERROR,
 					"Scalar type declaration '%s' must be unqualified",
-					ZSTR_VAL(zend_string_tolower(class_name)));
+					ZSTR_VAL(str));
 			}
 			arg_info->type = ZEND_TYPE_ENCODE(type, allow_null);
 		} else {
@@ -5513,12 +5519,18 @@ void zend_compile_params(zend_ast *ast, zend_ast *return_type_ast) /* {{{ */
 
 		if (type_ast) {
 			zend_bool allow_null;
-			zend_bool has_null_default = default_ast
-				&& (Z_TYPE(default_node.u.constant) == IS_NULL
-					|| (Z_TYPE(default_node.u.constant) == IS_CONSTANT_AST
-						&& Z_ASTVAL(default_node.u.constant)->kind == ZEND_AST_CONSTANT
-						&& strcasecmp(ZSTR_VAL(zend_ast_get_constant_name(Z_ASTVAL(default_node.u.constant))), "NULL") == 0));
 			zend_bool is_explicitly_nullable = (type_ast->attr & ZEND_TYPE_NULLABLE) == ZEND_TYPE_NULLABLE;
+			zend_bool has_null_default = 0;
+			
+			if (default_ast) {
+				if (Z_TYPE(default_node.u.constant) == IS_NULL) {
+					has_null_default = 1;
+				} else if (Z_TYPE(default_node.u.constant) == IS_CONSTANT_AST
+						&& Z_ASTVAL(default_node.u.constant)->kind == ZEND_AST_CONSTANT) {
+					zend_string *str = zend_ast_get_constant_name(Z_ASTVAL(default_node.u.constant));	
+					has_null_default = (strcasecmp(ZSTR_VAL(str), "NULL") == 0);
+				}
+			}
 
 			op_array->fn_flags |= ZEND_ACC_HAS_TYPE_HINTS;
 			allow_null = has_null_default || is_explicitly_nullable;
@@ -6753,7 +6765,7 @@ static zend_bool zend_try_ct_eval_magic_const(zval *zv, zend_ast *ast) /* {{{ */
 #ifdef ZEND_WIN32
 			ZSTR_LEN(dirname) = php_win32_ioutil_dirname(ZSTR_VAL(dirname), ZSTR_LEN(dirname));
 #else
-			ZSTR_LEN(dirname) = zend_dirname(ZSTR_VAL(dirname), ZSTR_LEN(dirname));
+			ZSTR_SET_LEN(dirname, zend_dirname(ZSTR_VAL(dirname), ZSTR_LEN(dirname)));
 #endif
 
 			if (strcmp(ZSTR_VAL(dirname), ".") == 0) {
@@ -6763,7 +6775,7 @@ static zend_bool zend_try_ct_eval_magic_const(zval *zv, zend_ast *ast) /* {{{ */
 #elif HAVE_GETWD
 				ZEND_IGNORE_VALUE(VCWD_GETWD(ZSTR_VAL(dirname)));
 #endif
-				ZSTR_LEN(dirname) = strlen(ZSTR_VAL(dirname));
+				ZSTR_SET_LEN(dirname, strlen(ZSTR_VAL(dirname)));
 			}
 
 			ZVAL_STR(zv, dirname);
@@ -7661,7 +7673,7 @@ void zend_compile_class_const(znode *result, zend_ast *ast) /* {{{ */
 {
 	zend_ast *class_ast = ast->child[0];
 	zend_ast *const_ast = ast->child[1];
-
+	zend_string *str;
 	znode class_node, const_node;
 	zend_op *opline;
 
@@ -7692,7 +7704,8 @@ void zend_compile_class_const(znode *result, zend_ast *ast) /* {{{ */
 		}
 		zend_string_release(resolved_name);
 	}
-	if (const_ast->kind == ZEND_AST_ZVAL && zend_string_equals_literal_ci(zend_ast_get_str(const_ast), "class")) {
+	str = zend_ast_get_str(const_ast);
+	if (const_ast->kind == ZEND_AST_ZVAL && zend_string_equals_literal_ci(str, "class")) {
 		zend_error_noreturn(E_COMPILE_ERROR,
 			"Dynamic class names are not allowed in compile-time ::class fetch");
 	}
@@ -8585,7 +8598,7 @@ void zend_eval_const_expr(zend_ast **ast_ptr) /* {{{ */
 		{
 			zend_ast *class_ast = ast->child[0];
 			zend_ast *name_ast = ast->child[1];
-			zend_string *resolved_name;
+			zend_string *resolved_name, *str;
 
 			if (zend_try_compile_const_expr_resolve_class_name(&result, class_ast, name_ast, 0)) {
 				if (Z_TYPE(result) == IS_NULL) {
@@ -8604,7 +8617,8 @@ void zend_eval_const_expr(zend_ast **ast_ptr) /* {{{ */
 			class_ast = ast->child[0];
 			name_ast = ast->child[1];
 
-			if (name_ast->kind == ZEND_AST_ZVAL && zend_string_equals_literal_ci(zend_ast_get_str(name_ast), "class")) {
+			str = zend_ast_get_str(name_ast);
+			if (name_ast->kind == ZEND_AST_ZVAL && zend_string_equals_literal_ci(str, "class")) {
 				zend_error_noreturn(E_COMPILE_ERROR,
 					"Dynamic class names are not allowed in compile-time ::class fetch");
 			}

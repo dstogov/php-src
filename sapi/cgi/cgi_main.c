@@ -795,12 +795,12 @@ static void php_cgi_ini_activate_user_config(char *path, size_t path_len, const 
 			ptr = s2 + start;  /* start is the point where doc_root ends! */
 			while ((ptr = strchr(ptr, DEFAULT_SLASH)) != NULL) {
 				*ptr = 0;
-				php_parse_user_ini_file(path, PG(user_ini_filename), entry->user_config);
+				php_parse_user_ini_file(path, PG(user_ini_filename) ? ZSTR_VAL(PG(user_ini_filename)) : NULL, entry->user_config);
 				*ptr = '/';
 				ptr++;
 			}
 		} else {
-			php_parse_user_ini_file(path, PG(user_ini_filename), entry->user_config);
+			php_parse_user_ini_file(path, PG(user_ini_filename) ? ZSTR_VAL(PG(user_ini_filename)) : NULL, entry->user_config);
 		}
 
 		if (real_path) {
@@ -844,7 +844,7 @@ static int sapi_cgi_activate(void)
 	}
 
 	if (php_ini_has_per_dir_config() ||
-		(PG(user_ini_filename) && *PG(user_ini_filename))
+		(PG(user_ini_filename) && *ZSTR_VAL(PG(user_ini_filename)))
 	) {
 		/* Prepare search path */
 		path_len = strlen(SG(request_info).path_translated);
@@ -865,7 +865,7 @@ static int sapi_cgi_activate(void)
 		php_ini_activate_per_dir_config(path, path_len); /* Note: for global settings sake we check from root to path */
 
 		/* Load and activate user ini files in path starting from DOCUMENT_ROOT */
-		if (PG(user_ini_filename) && *PG(user_ini_filename)) {
+		if (PG(user_ini_filename) && *ZSTR_VAL(PG(user_ini_filename))) {
 			if (fcgi_is_fastcgi()) {
 				fcgi_request *request = (fcgi_request*) SG(server_context);
 

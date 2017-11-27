@@ -211,7 +211,7 @@ static zend_string *browscap_convert_pattern(zend_string *pattern, int persisten
 	t[j++] = '~';
 	t[j]=0;
 
-	ZSTR_LEN(res) = j;
+	ZSTR_SET_LEN(res, j);
 	free_alloca(lc_pattern, use_heap);
 	return res;
 }

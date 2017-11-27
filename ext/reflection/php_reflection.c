@@ -599,6 +599,8 @@ static zend_op* _get_recv_op(zend_op_array *op_array, uint32_t offset)
 /* {{{ _parameter_string */
 static void _parameter_string(smart_str *str, zend_function *fptr, struct _zend_arg_info *arg_info, uint32_t offset, zend_bool required, char* indent)
 {
+	zend_string *s;
+
 	smart_str_append_printf(str, "Parameter #%d [ ", offset);
 	if (!required) {
 		smart_str_append_printf(str, "<optional> ");
@@ -606,8 +608,9 @@ static void _parameter_string(smart_str *str, zend_function *fptr, struct _zend_
 		smart_str_append_printf(str, "<required> ");
 	}
 	if (ZEND_TYPE_IS_CLASS(arg_info->type)) {
+		s = ZEND_TYPE_NAME(arg_info->type);
 		smart_str_append_printf(str, "%s ",
-			ZSTR_VAL(ZEND_TYPE_NAME(arg_info->type)));
+			ZSTR_VAL(s));
 		if (ZEND_TYPE_ALLOW_NULL(arg_info->type)) {
 			smart_str_append_printf(str, "or NULL ");
 		}
@@ -732,6 +735,7 @@ static void _function_string(smart_str *str, zend_function *fptr, zend_class_ent
 	zend_function *overwrites;
 	zend_string *lc_name;
 	size_t lc_name_len;
+	zend_string *s;
 
 	/* TBD: Repair indenting of doc comment (or is this to be done in the parser?)
 	 * What's "wrong" is that any whitespace before the doc comment start is
@@ -829,8 +833,9 @@ static void _function_string(smart_str *str, zend_function *fptr, zend_class_ent
 	if (fptr->op_array.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
 		smart_str_append_printf(str, "  %s- Return [ ", indent);
 		if (ZEND_TYPE_IS_CLASS(fptr->common.arg_info[-1].type)) {
+			s = ZEND_TYPE_NAME(fptr->common.arg_info[-1].type);
 			smart_str_append_printf(str, "%s ",
-				ZSTR_VAL(ZEND_TYPE_NAME(fptr->common.arg_info[-1].type)));
+				ZSTR_VAL(s));
 			if (ZEND_TYPE_ALLOW_NULL(fptr->common.arg_info[-1].type)) {
 				smart_str_appends(str, "or NULL ");
 			}

@@ -3811,7 +3811,7 @@ static zend_string* php_ldap_do_escape(const zend_bool *map, const char *value, 
 	}
 
 	ZSTR_VAL(ret)[p] = '\0';
-	ZSTR_LEN(ret) = p;
+	ZSTR_SET_LEN(ret, p);
 	return ret;
 }
 

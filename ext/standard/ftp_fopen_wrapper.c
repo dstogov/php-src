@@ -245,7 +245,7 @@ static php_stream *php_ftp_fopen_connect(php_stream_wrapper *wrapper, const char
 
 	/* send the user name */
 	if (resource->user != NULL) {
-		ZSTR_LEN(resource->user) = php_raw_url_decode(ZSTR_VAL(resource->user), ZSTR_LEN(resource->user));
+		ZSTR_SET_LEN(resource->user, php_raw_url_decode(ZSTR_VAL(resource->user), ZSTR_LEN(resource->user)));
 
 		PHP_FTP_CNTRL_CHK(ZSTR_VAL(resource->user), ZSTR_LEN(resource->user), "Invalid login %s")
 
@@ -262,7 +262,7 @@ static php_stream *php_ftp_fopen_connect(php_stream_wrapper *wrapper, const char
 		php_stream_notify_info(context, PHP_STREAM_NOTIFY_AUTH_REQUIRED, tmp_line, 0);
 
 		if (resource->pass != NULL) {
-			ZSTR_LEN(resource->pass) = php_raw_url_decode(ZSTR_VAL(resource->pass), ZSTR_LEN(resource->pass));
+			ZSTR_SET_LEN(resource->pass, php_raw_url_decode(ZSTR_VAL(resource->pass), ZSTR_LEN(resource->pass)));
 
 			PHP_FTP_CNTRL_CHK(ZSTR_VAL(resource->pass), ZSTR_LEN(resource->pass), "Invalid password %s")
 

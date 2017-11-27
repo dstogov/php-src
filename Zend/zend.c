@@ -225,7 +225,7 @@ ZEND_API zend_string *zend_vstrpprintf(size_t max_len, const char *format, va_li
 	}
 
 	if (max_len && ZSTR_LEN(buf.s) > max_len) {
-		ZSTR_LEN(buf.s) = max_len;
+		ZSTR_SET_LEN(buf.s, max_len);
 	}
 
 	smart_str_0(&buf);
@@ -1213,7 +1213,8 @@ static ZEND_COLD void zend_error_va_list(int type, const char *format, va_list a
 		case E_USER_DEPRECATED:
 		case E_RECOVERABLE_ERROR:
 			if (zend_is_compiling()) {
-				error_filename = ZSTR_VAL(zend_get_compiled_filename());
+				zend_string *str = zend_get_compiled_filename();
+				error_filename = ZSTR_VAL(str);
 				error_lineno = zend_get_compiled_lineno();
 			} else if (zend_is_executing()) {
 				error_filename = zend_get_executed_filename();
@@ -1563,7 +1564,8 @@ ZEND_API char *zend_make_compiled_string_description(const char *name) /* {{{ */
 	char *compiled_string_description;
 
 	if (zend_is_compiling()) {
-		cur_filename = ZSTR_VAL(zend_get_compiled_filename());
+		zend_string *str = zend_get_compiled_filename();
+		cur_filename = ZSTR_VAL(str);
 		cur_lineno = zend_get_compiled_lineno();
 	} else if (zend_is_executing()) {
 		cur_filename = zend_get_executed_filename();

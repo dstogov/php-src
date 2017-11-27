@@ -428,7 +428,7 @@ void zend_optimizer_compact_literals(zend_op_array *op_array, zend_optimizer_ctx
 							key = zend_string_alloc(key_len, 0);
 							memcpy(ZSTR_VAL(key), "$this->", sizeof("$this->") - 1);
 							memcpy(ZSTR_VAL(key) + sizeof("$this->") - 1, Z_STRVAL(op_array->literals[i]), Z_STRLEN(op_array->literals[i]) + 1);
-							ZSTR_LEN(key) = key_len;
+							ZSTR_SET_LEN(key, key_len);
 						} else if (info[i].flags & LITERAL_EX_CLASS) {
 							int key_len;
 							zval *class_name = &op_array->literals[(info[i].u.num < i) ? map[info[i].u.num] : info[i].u.num];
@@ -442,8 +442,7 @@ void zend_optimizer_compact_literals(zend_op_array *op_array, zend_optimizer_ctx
 						} else {
 							key = zend_string_init(Z_STRVAL(op_array->literals[i]), Z_STRLEN(op_array->literals[i]), 0);
 						}
-						ZSTR_H(key) = zend_hash_func(ZSTR_VAL(key), ZSTR_LEN(key));
-						ZSTR_H(key) += info[i].flags;
+						ZSTR_SET_H(key, zend_hash_func(ZSTR_VAL(key), ZSTR_LEN(key)) + info[i].flags);
 					}
 					if ((info[i].flags & LITERAL_MAY_MERGE) &&
 						(pos = zend_hash_find(&hash, key)) != NULL &&

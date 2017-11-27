@@ -169,11 +169,14 @@ char *zend_visibility_string(uint32_t fn_flags) /* {{{ */
 
 static zend_always_inline zend_bool zend_iterable_compatibility_check(zend_arg_info *arg_info) /* {{{ */
 {
+	zend_string *str;
+
 	if (ZEND_TYPE_CODE(arg_info->type) == IS_ARRAY) {
 		return 1;
 	}
 
-	if (ZEND_TYPE_IS_CLASS(arg_info->type) && zend_string_equals_literal_ci(ZEND_TYPE_NAME(arg_info->type), "Traversable")) {
+	str = ZEND_TYPE_NAME(arg_info->type);
+	if (ZEND_TYPE_IS_CLASS(arg_info->type) && zend_string_equals_literal_ci(str, "Traversable")) {
 		return 1;
 	}
 
@@ -393,9 +396,10 @@ static ZEND_COLD void zend_append_type_hint(smart_str *str, const zend_function 
 	if (ZEND_TYPE_IS_CLASS(arg_info->type)) {
 		const char *class_name;
 		size_t class_name_len;
+		zend_string *s = ZEND_TYPE_NAME(arg_info->type);
 
-		class_name = ZSTR_VAL(ZEND_TYPE_NAME(arg_info->type));
-		class_name_len = ZSTR_LEN(ZEND_TYPE_NAME(arg_info->type));
+		class_name = ZSTR_VAL(s);
+		class_name_len = ZSTR_LEN(s);
 
 		if (!strcasecmp(class_name, "self") && fptr->common.scope) {
 			class_name = ZSTR_VAL(fptr->common.scope->name);
@@ -1182,17 +1186,21 @@ static void zend_add_trait_method(zend_class_entry *ce, const char *name, zend_s
 					if (existing_fn->common.fn_flags & ZEND_ACC_ABSTRACT) {
 						/* Make sure the trait method is compatible with previosly declared abstract method */
 						if (UNEXPECTED(!zend_traits_method_compatibility_check(fn, existing_fn))) {
+							zend_string *s1 = zend_get_function_declaration(fn);
+							zend_string *s2 = zend_get_function_declaration(existing_fn);
 							zend_error_noreturn(E_COMPILE_ERROR, "Declaration of %s must be compatible with %s",
-								ZSTR_VAL(zend_get_function_declaration(fn)),
-								ZSTR_VAL(zend_get_function_declaration(existing_fn)));
+								ZSTR_VAL(s1),
+								ZSTR_VAL(s2));
 						}
 					}
 					if (fn->common.fn_flags & ZEND_ACC_ABSTRACT) {
 						/* Make sure the abstract declaration is compatible with previous declaration */
 						if (UNEXPECTED(!zend_traits_method_compatibility_check(existing_fn, fn))) {
+							zend_string *s1 = zend_get_function_declaration(existing_fn);
+							zend_string *s2 = zend_get_function_declaration(fn);
 							zend_error_noreturn(E_COMPILE_ERROR, "Declaration of %s must be compatible with %s",
-								ZSTR_VAL(zend_get_function_declaration(existing_fn)),
-								ZSTR_VAL(zend_get_function_declaration(fn)));
+								ZSTR_VAL(s1),
+								ZSTR_VAL(s2));
 						}
 						return;
 					}
@@ -1207,16 +1215,20 @@ static void zend_add_trait_method(zend_class_entry *ce, const char *name, zend_s
 				(existing_fn->common.scope->ce_flags & ZEND_ACC_INTERFACE) == 0) {
 			/* Make sure the trait method is compatible with previosly declared abstract method */
 			if (UNEXPECTED(!zend_traits_method_compatibility_check(fn, existing_fn))) {
+				zend_string *s1 = zend_get_function_declaration(fn);
+				zend_string *s2 = zend_get_function_declaration(existing_fn);
 				zend_error_noreturn(E_COMPILE_ERROR, "Declaration of %s must be compatible with %s",
-					ZSTR_VAL(zend_get_function_declaration(fn)),
-					ZSTR_VAL(zend_get_function_declaration(existing_fn)));
+					ZSTR_VAL(s1),
+					ZSTR_VAL(s2));
 			}
 		} else if (fn->common.fn_flags & ZEND_ACC_ABSTRACT) {
 			/* Make sure the abstract declaration is compatible with previous declaration */
 			if (UNEXPECTED(!zend_traits_method_compatibility_check(existing_fn, fn))) {
+				zend_string *s1 = zend_get_function_declaration(existing_fn);
+				zend_string *s2 = zend_get_function_declaration(fn);
 				zend_error_noreturn(E_COMPILE_ERROR, "Declaration of %s must be compatible with %s",
-					ZSTR_VAL(zend_get_function_declaration(existing_fn)),
-					ZSTR_VAL(zend_get_function_declaration(fn)));
+					ZSTR_VAL(s1),
+					ZSTR_VAL(s2));
 			}
 			return;
 		} else if (UNEXPECTED(existing_fn->common.scope->ce_flags & ZEND_ACC_TRAIT)) {

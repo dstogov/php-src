@@ -891,23 +891,23 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 			switch(*s) {
 				case 'n':
 					*t++ = '\n';
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 'r':
 					*t++ = '\r';
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 't':
 					*t++ = '\t';
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 'f':
 					*t++ = '\f';
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 'v':
 					*t++ = '\v';
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 'e':
 #ifdef ZEND_WIN32
@@ -915,7 +915,7 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 #else
 					*t++ = '\e';
 #endif
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case '"':
 				case '`':
@@ -927,20 +927,21 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 				case '\\':
 				case '$':
 					*t++ = *s;
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				case 'x':
 				case 'X':
 					if (ZEND_IS_HEX(*(s+1))) {
 						char hex_buf[3] = { 0, 0, 0 };
 
-						Z_STRLEN_P(zendlval)--; /* for the 'x' */
+						/* for the 'x' */
+						ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 
 						hex_buf[0] = *(++s);
-						Z_STRLEN_P(zendlval)--;
+						ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 						if (ZEND_IS_HEX(*(s+1))) {
 							hex_buf[1] = *(++s);
-							Z_STRLEN_P(zendlval)--;
+							ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 						}
 						*t++ = (char) ZEND_STRTOL(hex_buf, NULL, 16);
 					} else {
@@ -1031,8 +1032,7 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 							*t++ = (codepoint & 0x3F) + 0x80;
 						}
 
-						Z_STRLEN_P(zendlval) -= 2; /* \u */
-						Z_STRLEN_P(zendlval) -= (len - byte_len);
+						ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval) - (2 + (len - byte_len)));
 					}
 					break;
 				default:
@@ -1041,13 +1041,13 @@ static int zend_scan_escape_string(zval *zendlval, char *str, int len, char quot
 						char octal_buf[4] = { 0, 0, 0, 0 };
 
 						octal_buf[0] = *s;
-						Z_STRLEN_P(zendlval)--;
+						ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 						if (ZEND_IS_OCT(*(s+1))) {
 							octal_buf[1] = *(++s);
-							Z_STRLEN_P(zendlval)--;
+							ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 							if (ZEND_IS_OCT(*(s+1))) {
 								octal_buf[2] = *(++s);
-								Z_STRLEN_P(zendlval)--;
+								ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 							}
 						}
 						if (octal_buf[2] &&
@@ -2004,7 +2004,7 @@ inline_char_handler:
 				case '\\':
 				case '\'':
 					*t++ = *s;
-					Z_STRLEN_P(zendlval)--;
+					ZSTR_SET_LEN(Z_STR_P(zendlval), Z_STRLEN_P(zendlval)-1);
 					break;
 				default:
 					*t++ = '\\';

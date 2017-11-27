@@ -575,23 +575,27 @@ PHP_XML_API zend_string *xml_utf8_encode(const char *s, size_t len, const XML_Ch
 	/* This is the theoretical max (will never get beyond len * 2 as long
 	 * as we are converting from single-byte characters, though) */
 	str = zend_string_safe_alloc(len, 4, 0, 0);
-	ZSTR_LEN(str) = 0;
+	ZSTR_SET_LEN(str, 0);
 	while (pos > 0) {
 		c = encoder ? encoder((unsigned char)(*s)) : (unsigned short)(*s);
 		if (c < 0x80) {
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (char) c;
+			ZSTR_VAL(str)[ZSTR_LEN(str)] = (char) c;
+			ZSTR_SET_LEN(str, ZSTR_LEN(str) + 1);
 		} else if (c < 0x800) {
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xc0 | (c >> 6));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0x80 | (c & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)] = (0xc0 | (c >> 6));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+1] = (0x80 | (c & 0x3f));
+			ZSTR_SET_LEN(str, ZSTR_LEN(str) + 2);
 		} else if (c < 0x10000) {
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xe0 | (c >> 12));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xc0 | ((c >> 6) & 0x3f));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0x80 | (c & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)] = (0xe0 | (c >> 12));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+1] = (0xc0 | ((c >> 6) & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+2] = (0x80 | (c & 0x3f));
+			ZSTR_SET_LEN(str, ZSTR_LEN(str) + 3);
 		} else if (c < 0x200000) {
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xf0 | (c >> 18));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xe0 | ((c >> 12) & 0x3f));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0xc0 | ((c >> 6) & 0x3f));
-			ZSTR_VAL(str)[ZSTR_LEN(str)++] = (0x80 | (c & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)] = (0xf0 | (c >> 18));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+1] = (0xe0 | ((c >> 12) & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+2] = (0xc0 | ((c >> 6) & 0x3f));
+			ZSTR_VAL(str)[ZSTR_LEN(str)+3] = (0x80 | (c & 0x3f));
+			ZSTR_SET_LEN(str, ZSTR_LEN(str) + 4);
 		}
 		pos--;
 		s++;
@@ -624,7 +628,7 @@ PHP_XML_API zend_string *xml_utf8_decode(const XML_Char *s, size_t len, const XM
 	}
 
 	str = zend_string_alloc(len, 0);
-	ZSTR_LEN(str) = 0;
+	ZSTR_SET_LEN(str, 0);
 	while (pos < len) {
 		int status = FAILURE;
 		c = php_next_utf8_char((const unsigned char*)s, (size_t) len, &pos, &status);
@@ -633,7 +637,8 @@ PHP_XML_API zend_string *xml_utf8_decode(const XML_Char *s, size_t len, const XM
 			c = '?';
 		}
 
-		ZSTR_VAL(str)[ZSTR_LEN(str)++] = decoder ? (unsigned int)decoder(c) : c;
+		ZSTR_VAL(str)[ZSTR_LEN(str)] = decoder ? (unsigned int)decoder(c) : c;
+		ZSTR_SET_LEN(str, ZSTR_LEN(str) + 1);
 	}
 	ZSTR_VAL(str)[ZSTR_LEN(str)] = '\0';
 	if (ZSTR_LEN(str) < len) {

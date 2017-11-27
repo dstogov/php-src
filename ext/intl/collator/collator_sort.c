@@ -613,7 +613,7 @@ PHP_FUNCTION( collator_get_sort_key )
 	if(!key_len) {
 		RETURN_FALSE;
 	}
-	ZSTR_LEN(key_str) = key_len - 1;
+	ZSTR_SET_LEN(key_str, key_len - 1);
 	RETVAL_NEW_STR(key_str);
 }
 /* }}} */

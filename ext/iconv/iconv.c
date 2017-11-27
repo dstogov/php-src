@@ -349,7 +349,7 @@ static char *get_internal_encoding(void) {
 	} else if (PG(internal_encoding) && PG(internal_encoding)[0]) {
 		return PG(internal_encoding);
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }
@@ -357,10 +357,10 @@ static char *get_internal_encoding(void) {
 static char *get_input_encoding(void) {
 	if (ICONVG(input_encoding) && ICONVG(input_encoding)[0]) {
 		return ICONVG(input_encoding);
-	} else if (PG(input_encoding) && PG(input_encoding)[0]) {
-		return PG(input_encoding);
+	} else if (PG(input_encoding) && ZSTR_VAL(PG(input_encoding))[0]) {
+		return ZSTR_VAL(PG(input_encoding));
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }
@@ -371,7 +371,7 @@ static char *get_output_encoding(void) {
 	} else if (PG(output_encoding) && PG(output_encoding)[0]) {
 		return PG(output_encoding);
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }
@@ -491,7 +491,7 @@ static php_iconv_err_t _php_iconv_appendl(smart_str *d, const char *s, size_t l,
 #if !ICONV_SUPPORTS_ERRNO
 			prev_in_left = in_left;
 #endif
-			ZSTR_LEN((d)->s) += (buf_growth - out_left);
+			ZSTR_SET_LEN((d)->s, ZSTR_LEN((d)->s) + (buf_growth - out_left));
 			buf_growth <<= 1;
 		}
 	} else {
@@ -502,7 +502,7 @@ static php_iconv_err_t _php_iconv_appendl(smart_str *d, const char *s, size_t l,
 			out_p = ZSTR_VAL((d)->s) + ZSTR_LEN((d)->s);
 
 			if (iconv(cd, NULL, NULL, (char **) &out_p, &out_left) == (size_t)0) {
-				ZSTR_LEN((d)->s) += (buf_growth - out_left);
+				ZSTR_SET_LEN((d)->s, ZSTR_LEN((d)->s) + (buf_growth - out_left));
 				break;
 			} else {
 #if ICONV_SUPPORTS_ERRNO
@@ -515,7 +515,7 @@ static php_iconv_err_t _php_iconv_appendl(smart_str *d, const char *s, size_t l,
 				}
 #endif
 			}
-			ZSTR_LEN((d)->s) += (buf_growth - out_left);
+			ZSTR_SET_LEN((d)->s, ZSTR_LEN((d)->s) + (buf_growth - out_left));
 			buf_growth <<= 1;
 		}
 	}
@@ -604,7 +604,7 @@ PHP_ICONV_API php_iconv_err_t php_iconv_string(const char *in_p, size_t in_len, 
 	}
 
 	ZSTR_VAL(out_buffer)[out_size - out_left] = '\0';
-	ZSTR_LEN(out_buffer) = out_size - out_left;
+	ZSTR_SET_LEN(out_buffer, out_size - out_left);
 
 	iconv_close(cd);
 
@@ -716,7 +716,7 @@ PHP_ICONV_API php_iconv_err_t php_iconv_string(const char *in_p, size_t in_len, 
 		}
 	}
 	*out_p = '\0';
-	ZSTR_LEN(out_buf) = out_size;
+	ZSTR_SET_LEN(out_buf, out_size);
 	*out = out_buf;
 	return retval;
 #endif

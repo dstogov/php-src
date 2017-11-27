@@ -3553,7 +3553,7 @@ PHP_FUNCTION(pg_lo_read)
 		RETURN_FALSE;
 	}
 
-	ZSTR_LEN(buf) = nbytes;
+	ZSTR_SET_LEN(buf, nbytes);
 	ZSTR_VAL(buf)[ZSTR_LEN(buf)] = '\0';
 	RETURN_NEW_STR(buf);
 }
@@ -4396,11 +4396,11 @@ PHP_FUNCTION(pg_escape_string)
 		if ((pgsql = (PGconn *)zend_fetch_resource2(link, "PostgreSQL link", le_link, le_plink)) == NULL) {
 			RETURN_FALSE;
 		}
-		ZSTR_LEN(to) = PQescapeStringConn(pgsql, ZSTR_VAL(to), ZSTR_VAL(from), ZSTR_LEN(from), NULL);
+		ZSTR_SET_LEN(to, PQescapeStringConn(pgsql, ZSTR_VAL(to), ZSTR_VAL(from), ZSTR_LEN(from), NULL));
 	} else
 #endif
 	{
-		ZSTR_LEN(to) = PQescapeString(ZSTR_VAL(to), ZSTR_VAL(from), ZSTR_LEN(from));
+		ZSTR_SET_LEN(to, PQescapeString(ZSTR_VAL(to), ZSTR_VAL(from), ZSTR_LEN(from)));
 	}
 
 	to = zend_string_truncate(to, ZSTR_LEN(to), 0);
@@ -6102,7 +6102,7 @@ PHP_PGSQL_API int php_pgsql_convert(PGconn *pg_link, const char *table_name, con
 							/* PostgreSQL ignores \0 */
 							str = zend_string_alloc(Z_STRLEN_P(val) * 2, 0);
 							/* better to use PGSQLescapeLiteral since PGescapeStringConn does not handle special \ */
-							ZSTR_LEN(str) = PQescapeStringConn(pg_link, ZSTR_VAL(str), Z_STRVAL_P(val), Z_STRLEN_P(val), NULL);
+							ZSTR_SET_LEN(str, PQescapeStringConn(pg_link, ZSTR_VAL(str), Z_STRVAL_P(val), Z_STRLEN_P(val), NULL));
 							str = zend_string_truncate(str, ZSTR_LEN(str), 0);
 							ZVAL_NEW_STR(&new_val, str);
 							php_pgsql_add_quotes(&new_val, 1);
@@ -6647,7 +6647,7 @@ PHP_PGSQL_API int php_pgsql_insert(PGconn *pg_link, const char *table, zval *var
 		}
 		smart_str_appendc(&querystr, ',');
 	} ZEND_HASH_FOREACH_END();
-	ZSTR_LEN(querystr.s)--;
+	ZSTR_SET_LEN(querystr.s, ZSTR_LEN(querystr.s) - 1);
 	smart_str_appends(&querystr, ") VALUES (");
 
 	/* make values string */
@@ -6685,7 +6685,7 @@ PHP_PGSQL_API int php_pgsql_insert(PGconn *pg_link, const char *table, zval *var
 		smart_str_appendc(&querystr, ',');
 	} ZEND_HASH_FOREACH_END();
 	/* Remove the trailing "," */
-	ZSTR_LEN(querystr.s)--;
+	ZSTR_SET_LEN(querystr.s, ZSTR_LEN(querystr.s) - 1);
 	smart_str_appends(&querystr, ");");
 
 no_values:
@@ -6853,7 +6853,7 @@ static inline int build_assignment_string(PGconn *pg_link, smart_str *querystr, 
 		smart_str_appendl(querystr, pad, pad_len);
 	} ZEND_HASH_FOREACH_END();
 	if (querystr->s) {
-		ZSTR_LEN(querystr->s) -= pad_len;
+		ZSTR_SET_LEN(querystr->s, ZSTR_LEN(querystr->s) - pad_len);
 	}
 
 	return 0;

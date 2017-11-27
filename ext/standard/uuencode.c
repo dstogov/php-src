@@ -186,7 +186,7 @@ PHPAPI zend_string *php_uudecode(char *src, size_t src_len) /* {{{ */
 		}
 	}
 
-	ZSTR_LEN(dest) = total_len;
+	ZSTR_SET_LEN(dest, total_len);
 	ZSTR_VAL(dest)[ZSTR_LEN(dest)] = '\0';
 
 	return dest;

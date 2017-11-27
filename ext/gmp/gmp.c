@@ -772,7 +772,7 @@ static void gmp_strval(zval *result, mpz_t gmpnum, int base) /* {{{ */
 	 */
 
 	if (ZSTR_VAL(str)[ZSTR_LEN(str) - 1] == '\0') {
-		ZSTR_LEN(str)--;
+		ZSTR_SET_LEN(str, ZSTR_LEN(str) - 1);
 	} else {
 		ZSTR_VAL(str)[ZSTR_LEN(str)] = '\0';
 	}

@@ -395,8 +395,12 @@ void phpdbg_update_watch_ref(phpdbg_watchpoint_t *watch) {
 				phpdbg_activate_watchpoint(&coll->reference);
 				phpdbg_watch_backup_data(&coll->reference);
 			} else if (Z_TYPE_P(watch->addr.zv) == IS_STRING) {
+				size_t len;
+
 				coll->reference.type = WATCH_ON_STR;
-				phpdbg_set_addr_watchpoint(&Z_STRLEN_P(watch->addr.zv), XtOffsetOf(zend_string, val) - XtOffsetOf(zend_string, len) + Z_STRLEN_P(watch->addr.zv) + 1, &coll->reference);
+				len = Z_STRLEN_P(watch->addr.zv);
+				phpdbg_set_addr_watchpoint(&len, XtOffsetOf(zend_string, val) - XtOffsetOf(zend_string, len) + Z_STRLEN_P(watch->addr.zv) + 1, &coll->reference);
+				ZSTR_SET_LEN(Z_STR_P(watch->addr.zv), len);
 				coll->reference.coll = coll;
 				phpdbg_store_watchpoint_btree(&coll->reference);
 				phpdbg_activate_watchpoint(&coll->reference);
@@ -997,7 +1001,11 @@ void phpdbg_check_watchpoint(phpdbg_watchpoint_t *watch) {
 
 	switch (watch->type) {
 		case WATCH_ON_STR:
-			comparePtr = &ZSTR_LEN(watch->backup.str);
+			if (ZSTR_IS_PACKED(watch->backup.str)) {
+				comparePtr = &watch->backup.str;
+			} else {
+				comparePtr = &watch->backup.str->len;
+			}
 			break;
 		case WATCH_ON_HASHTABLE:
 			comparePtr = (char *) &watch->backup.ht + HT_WATCH_OFFSET;

@@ -23,8 +23,8 @@
 #include "zend_smart_str_public.h"
 
 ZEND_BEGIN_MODULE_GLOBALS(cli_readline)
-	char *pager;
-	char *prompt;
+	zend_string *pager;
+	zend_string *prompt;
 	smart_str *prompt_str;
 ZEND_END_MODULE_GLOBALS(cli_readline)
 

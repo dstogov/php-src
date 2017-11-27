@@ -1251,7 +1251,7 @@ PHP_FUNCTION(socket_read)
 	}
 
 	tmpbuf = zend_string_truncate(tmpbuf, retval, 0);
-	ZSTR_LEN(tmpbuf) = retval;
+	ZSTR_SET_LEN(tmpbuf, retval);
 	ZSTR_VAL(tmpbuf)[ZSTR_LEN(tmpbuf)] = '\0' ;
 
 	RETURN_NEW_STR(tmpbuf);
@@ -1686,7 +1686,7 @@ PHP_FUNCTION(socket_recv)
 		zval_dtor(buf);
 		ZVAL_NULL(buf);
 	} else {
-		ZSTR_LEN(recv_buf) = retval;
+		ZSTR_SET_LEN(recv_buf, retval);
 		ZSTR_VAL(recv_buf)[ZSTR_LEN(recv_buf)] = '\0';
 
 		/* Rebuild buffer zval */
@@ -1776,7 +1776,7 @@ PHP_FUNCTION(socket_recvfrom)
 				zend_string_free(recv_buf);
 				RETURN_FALSE;
 			}
-			ZSTR_LEN(recv_buf) = retval;
+			ZSTR_SET_LEN(recv_buf, retval);
 			ZSTR_VAL(recv_buf)[ZSTR_LEN(recv_buf)] = '\0';
 
 			zval_dtor(arg2);
@@ -1803,7 +1803,7 @@ PHP_FUNCTION(socket_recvfrom)
 				zend_string_free(recv_buf);
 				RETURN_FALSE;
 			}
-			ZSTR_LEN(recv_buf) = retval;
+			ZSTR_SET_LEN(recv_buf, retval);
 			ZSTR_VAL(recv_buf)[ZSTR_LEN(recv_buf)] = '\0';
 
 			zval_dtor(arg2);
@@ -1834,7 +1834,7 @@ PHP_FUNCTION(socket_recvfrom)
 				zend_string_free(recv_buf);
 				RETURN_FALSE;
 			}
-			ZSTR_LEN(recv_buf) = retval;
+			ZSTR_SET_LEN(recv_buf, retval);
 			ZSTR_VAL(recv_buf)[ZSTR_LEN(recv_buf)] = '\0';
 
 			zval_dtor(arg2);

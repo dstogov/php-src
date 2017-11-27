@@ -588,7 +588,7 @@ static void _build_trace_string(smart_str *str, HashTable *ht, uint32_t num) /* 
 			} ZEND_HASH_FOREACH_END();
 
 			if (last_len != ZSTR_LEN(str->s)) {
-				ZSTR_LEN(str->s) -= 2; /* remove last ', ' */
+				ZSTR_SET_LEN(str->s, ZSTR_LEN(str->s) - 2); /* remove last ', ' */
 			}
 		} else {
 			zend_error(E_WARNING, "args element is no array");

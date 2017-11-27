@@ -356,7 +356,7 @@ static int check_http_host(char *target)
 		/* HTTP_HOST could be 'localhost:8888' etc. */
 		colon = strchr(ZSTR_VAL(host_tmp), ':');
 		if (colon) {
-			ZSTR_LEN(host_tmp) = colon - ZSTR_VAL(host_tmp);
+			ZSTR_SET_LEN(host_tmp, colon - ZSTR_VAL(host_tmp));
 			ZSTR_VAL(host_tmp)[ZSTR_LEN(host_tmp)] = '\0';
 		}
 		if (!strcasecmp(ZSTR_VAL(host_tmp), target)) {
@@ -446,7 +446,7 @@ static inline void handle_tag(STD_PARA)
 	unsigned int i;
 
 	if (ctx->tag.s) {
-		ZSTR_LEN(ctx->tag.s) = 0;
+		ZSTR_SET_LEN(ctx->tag.s, 0);
 	}
 	smart_str_appendl(&ctx->tag, start, YYCURSOR - start);
 	for (i = 0; i < ZSTR_LEN(ctx->tag.s); i++)
@@ -467,7 +467,7 @@ static inline void handle_tag(STD_PARA)
 static inline void handle_arg(STD_PARA)
 {
 	if (ctx->arg.s) {
-		ZSTR_LEN(ctx->arg.s) = 0;
+		ZSTR_SET_LEN(ctx->arg.s, 0);
 	}
 	smart_str_appendl(&ctx->arg, start, YYCURSOR - start);
 	if (ctx->tag_type == TAG_FORM &&
@@ -990,7 +990,7 @@ stop:
 	}
 
 	if (rest) memmove(ZSTR_VAL(ctx->buf.s), start, rest);
-	ZSTR_LEN(ctx->buf.s) = rest;
+	ZSTR_SET_LEN(ctx->buf.s, rest);
 }
 
 
@@ -1172,9 +1172,9 @@ static inline int php_url_scanner_add_var_impl(char *name, size_t name_len, char
 		smart_str_appendl(&sname, ZSTR_VAL(encoded), ZSTR_LEN(encoded)); zend_string_free(encoded);
 		encoded = php_raw_url_encode(value, value_len);
 		smart_str_appendl(&svalue, ZSTR_VAL(encoded), ZSTR_LEN(encoded)); zend_string_free(encoded);
-		encoded = php_escape_html_entities_ex((unsigned char*)name, name_len, 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset), 0);
+		encoded = php_escape_html_entities_ex((unsigned char*)name, name_len, 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset) ? ZSTR_VAL(SG(default_charset)) : NULL, 0);
 		smart_str_appendl(&hname, ZSTR_VAL(encoded), ZSTR_LEN(encoded)); zend_string_free(encoded);
-		encoded = php_escape_html_entities_ex((unsigned char*)value, value_len, 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset), 0);
+		encoded = php_escape_html_entities_ex((unsigned char*)value, value_len, 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset) ? ZSTR_VAL(SG(default_charset)) : NULL, 0);
 		smart_str_appendl(&hvalue, ZSTR_VAL(encoded), ZSTR_LEN(encoded)); zend_string_free(encoded);
 	} else {
 		smart_str_appendl(&sname, name, name_len);
@@ -1224,10 +1224,10 @@ static inline void php_url_scanner_reset_vars_impl(int type) {
 	}
 
 	if (url_state->form_app.s) {
-		ZSTR_LEN(url_state->form_app.s) = 0;
+		ZSTR_SET_LEN(url_state->form_app.s, 0);
 	}
 	if (url_state->url_app.s) {
-		ZSTR_LEN(url_state->url_app.s) = 0;
+		ZSTR_SET_LEN(url_state->url_app.s, 0);
 	}
 }
 
@@ -1274,7 +1274,7 @@ static inline int php_url_scanner_reset_var_impl(zend_string *name, int encode, 
 		encoded = php_raw_url_encode(ZSTR_VAL(name), ZSTR_LEN(name));
 		smart_str_appendl(&sname, ZSTR_VAL(encoded), ZSTR_LEN(encoded));
 		zend_string_free(encoded);
-		encoded = php_escape_html_entities_ex((unsigned char *)ZSTR_VAL(name), ZSTR_LEN(name), 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset), 0);
+		encoded = php_escape_html_entities_ex((unsigned char *)ZSTR_VAL(name), ZSTR_LEN(name), 0, ENT_QUOTES|ENT_SUBSTITUTE, SG(default_charset) ? ZSTR_VAL(SG(default_charset)) : NULL, 0);
 		smart_str_appendl(&hname, ZSTR_VAL(encoded), ZSTR_LEN(encoded));
 		zend_string_free(encoded);
 	} else {
@@ -1328,7 +1328,7 @@ static inline int php_url_scanner_reset_var_impl(zend_string *name, int encode, 
 	/* Remove partially */
 	memmove(start, end,
 			ZSTR_LEN(url_state->url_app.s) - (end - ZSTR_VAL(url_state->url_app.s)));
-	ZSTR_LEN(url_state->url_app.s) -= end - start;
+	ZSTR_SET_LEN(url_state->url_app.s, ZSTR_LEN(url_state->url_app.s) - (end - start));
 	ZSTR_VAL(url_state->url_app.s)[ZSTR_LEN(url_state->url_app.s)] = '\0';
 
 	/* Remove form var */
@@ -1354,7 +1354,7 @@ static inline int php_url_scanner_reset_var_impl(zend_string *name, int encode, 
 	/* Remove partially */
 	memmove(start, end,
 			ZSTR_LEN(url_state->form_app.s) - (end - ZSTR_VAL(url_state->form_app.s)));
-	ZSTR_LEN(url_state->form_app.s) -= end - start;
+	ZSTR_SET_LEN(url_state->form_app.s, ZSTR_LEN(url_state->form_app.s) - (end - start));
 	ZSTR_VAL(url_state->form_app.s)[ZSTR_LEN(url_state->form_app.s)] = '\0';
 
 finish:

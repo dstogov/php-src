@@ -700,10 +700,7 @@ static zend_always_inline zend_uchar zval_get_type(const zval* pz) {
 	} while (0)
 
 #define ZVAL_NEW_STR(z, s) do {					\
-		zval *__z = (z);						\
-		zend_string *__s = (s);					\
-		Z_STR_P(__z) = __s;						\
-		Z_TYPE_INFO_P(__z) = IS_STRING_EX;		\
+		ZVAL_STR(z, s);							\
 	} while (0)
 
 #define ZVAL_STR_COPY(z, s) do {						\

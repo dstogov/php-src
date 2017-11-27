@@ -193,7 +193,7 @@ static int php_json_encode_array(smart_str *buf, zval *val, int options, php_jso
 								options & ~PHP_JSON_NUMERIC_CHECK, encoder) == FAILURE &&
 							(options & PHP_JSON_PARTIAL_OUTPUT_ON_ERROR) &&
 							buf->s) {
-						ZSTR_LEN(buf->s) -= 4;
+						ZSTR_SET_LEN(buf->s, ZSTR_LEN(buf->s) - 4);
 						smart_str_appendl(buf, "\"\"", 2);
 					}
 				} else {
@@ -304,7 +304,7 @@ static int php_json_escape_string(
 					utf8_sub = 1;
 				} else {
 					if (buf->s) {
-						ZSTR_LEN(buf->s) = checkpoint;
+						ZSTR_SET_LEN(buf->s, checkpoint);
 					}
 					encoder->error_code = PHP_JSON_ERROR_UTF8;
 					if (options & PHP_JSON_PARTIAL_OUTPUT_ON_ERROR) {

@@ -125,7 +125,7 @@ typedef struct _sapi_globals_struct {
 	unsigned char headers_sent;
 	zend_stat_t global_stat;
 	char *default_mimetype;
-	char *default_charset;
+	zend_string *default_charset;
 	HashTable *rfc1867_uploaded_files;
 	zend_long post_max_size;
 	int options;

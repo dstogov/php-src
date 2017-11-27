@@ -84,7 +84,7 @@ zend_string* intl_charFromString(const UnicodeString &from, UErrorCode *status)
 		return NULL;
 	}
 	ZSTR_VAL(u8res)[actual_len] = '\0';
-	ZSTR_LEN(u8res) = actual_len;
+	ZSTR_SET_LEN(u8res, actual_len);
 
 	return u8res;
 }

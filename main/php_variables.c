@@ -338,7 +338,8 @@ static inline int add_post_vars(zval *arr, post_var_data_t *vars, zend_bool eof)
 	}
 
 	if (!eof && ZSTR_VAL(vars->str.s) != vars->ptr) {
-		memmove(ZSTR_VAL(vars->str.s), vars->ptr, ZSTR_LEN(vars->str.s) = vars->end - vars->ptr);
+		ZSTR_SET_LEN(vars->str.s, vars->end - vars->ptr);
+		memmove(ZSTR_VAL(vars->str.s), vars->ptr, ZSTR_LEN(vars->str.s));
 	}
 	return SUCCESS;
 }
@@ -697,7 +698,7 @@ PHPAPI int php_hash_environment(void)
 
 static zend_bool php_auto_globals_create_get(zend_string *name)
 {
-	if (PG(variables_order) && (strchr(PG(variables_order),'G') || strchr(PG(variables_order),'g'))) {
+	if (PG(variables_order) && (strchr(ZSTR_VAL(PG(variables_order)),'G') || strchr(ZSTR_VAL(PG(variables_order)),'g'))) {
 		sapi_module.treat_data(PARSE_GET, NULL, NULL);
 	} else {
 		zval_ptr_dtor(&PG(http_globals)[TRACK_VARS_GET]);
@@ -713,7 +714,7 @@ static zend_bool php_auto_globals_create_get(zend_string *name)
 static zend_bool php_auto_globals_create_post(zend_string *name)
 {
 	if (PG(variables_order) &&
-			(strchr(PG(variables_order),'P') || strchr(PG(variables_order),'p')) &&
+			(strchr(ZSTR_VAL(PG(variables_order)),'P') || strchr(ZSTR_VAL(PG(variables_order)),'p')) &&
 		!SG(headers_sent) &&
 		SG(request_info).request_method &&
 		!strcasecmp(SG(request_info).request_method, "POST")) {
@@ -731,7 +732,7 @@ static zend_bool php_auto_globals_create_post(zend_string *name)
 
 static zend_bool php_auto_globals_create_cookie(zend_string *name)
 {
-	if (PG(variables_order) && (strchr(PG(variables_order),'C') || strchr(PG(variables_order),'c'))) {
+	if (PG(variables_order) && (strchr(ZSTR_VAL(PG(variables_order)),'C') || strchr(ZSTR_VAL(PG(variables_order)),'c'))) {
 		sapi_module.treat_data(PARSE_COOKIE, NULL, NULL);
 	} else {
 		zval_ptr_dtor(&PG(http_globals)[TRACK_VARS_COOKIE]);
@@ -774,7 +775,7 @@ static void check_http_proxy(HashTable *var_table)
 
 static zend_bool php_auto_globals_create_server(zend_string *name)
 {
-	if (PG(variables_order) && (strchr(PG(variables_order),'S') || strchr(PG(variables_order),'s'))) {
+	if (PG(variables_order) && (strchr(ZSTR_VAL(PG(variables_order)),'S') || strchr(ZSTR_VAL(PG(variables_order)),'s'))) {
 		php_register_server_variables();
 
 		if (PG(register_argc_argv)) {
@@ -814,7 +815,7 @@ static zend_bool php_auto_globals_create_env(zend_string *name)
 	zval_ptr_dtor(&PG(http_globals)[TRACK_VARS_ENV]);
 	array_init(&PG(http_globals)[TRACK_VARS_ENV]);
 
-	if (PG(variables_order) && (strchr(PG(variables_order),'E') || strchr(PG(variables_order),'e'))) {
+	if (PG(variables_order) && (strchr(ZSTR_VAL(PG(variables_order)),'E') || strchr(ZSTR_VAL(PG(variables_order)),'e'))) {
 		php_import_environment_variables(&PG(http_globals)[TRACK_VARS_ENV]);
 	}
 
@@ -836,7 +837,7 @@ static zend_bool php_auto_globals_create_request(zend_string *name)
 	if (PG(request_order) != NULL) {
 		p = PG(request_order);
 	} else {
-		p = PG(variables_order);
+		p = PG(variables_order) ? ZSTR_VAL(PG(variables_order)) : NULL;
 	}
 
 	for (; p && *p; p++) {

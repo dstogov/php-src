@@ -197,6 +197,7 @@ static void *zend_file_cache_serialize_interned(zend_string              *str,
 {
 	size_t len;
 	void *ret;
+	zend_string *mem;
 
 	/* check if the same interned string was already stored */
 	ret = zend_shared_alloc_get_xlat_entry(str);
@@ -214,7 +215,8 @@ static void *zend_file_cache_serialize_interned(zend_string              *str,
 			((_ZSTR_HEADER_SIZE + 1 + new_len + 4095) & ~0xfff) - (_ZSTR_HEADER_SIZE + 1),
 			0);
 	}
-	memcpy(ZSTR_VAL((zend_string*)ZCG(mem)) + info->str_size, str, len);
+	mem = (zend_string*)ZCG(mem);
+	memcpy(ZSTR_VAL(mem) + info->str_size, str, len);
 	info->str_size += len;
 	return ret;
 }
@@ -762,6 +764,7 @@ int zend_file_cache_script_store(zend_persistent_script *script, int in_shm)
 	struct iovec vec[3];
 #endif
 	void *mem, *buf;
+	zend_string *str;
 
 	filename = zend_file_cache_get_bin_file_path(script->script.filename);
 
@@ -811,14 +814,16 @@ int zend_file_cache_script_store(zend_persistent_script *script, int in_shm)
 	zend_shared_alloc_destroy_xlat_table();
 
 	info.checksum = zend_adler32(ADLER32_INIT, buf, script->size);
-	info.checksum = zend_adler32(info.checksum, (signed char*)ZSTR_VAL((zend_string*)ZCG(mem)), info.str_size);
+	str = (zend_string*)ZCG(mem);
+	info.checksum = zend_adler32(info.checksum, (signed char*)ZSTR_VAL(str), info.str_size);
 
 #ifdef HAVE_SYS_UIO_H
 	vec[0].iov_base = &info;
 	vec[0].iov_len = sizeof(info);
 	vec[1].iov_base = buf;
 	vec[1].iov_len = script->size;
-	vec[2].iov_base = ZSTR_VAL((zend_string*)ZCG(mem));
+	str = (zend_string*)ZCG(mem);
+	vec[2].iov_base = ZSTR_VAL(str);
 	vec[2].iov_len = info.str_size;
 
 	if (writev(fd, vec, 3) != (ssize_t)(sizeof(info) + script->size + info.str_size)) {

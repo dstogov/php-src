@@ -687,7 +687,8 @@ add_to_hash:
 	zend_hash_iterators_update(ht, HT_INVALID_IDX, idx);
 	p = ht->arData + idx;
 	p->key = key = zend_string_init(str, len, GC_FLAGS(ht) & IS_ARRAY_PERSISTENT);
-	p->h = ZSTR_H(key) = h;
+	p->h = h;
+	ZSTR_SET_H(key, h);
 	ht->u.flags &= ~HASH_FLAG_STATIC_KEYS;
 	ZVAL_COPY_VALUE(&p->val, pData);
 	nIndex = h | ht->nTableMask;

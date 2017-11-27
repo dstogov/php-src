@@ -1145,7 +1145,8 @@ static void zend_timeout_handler(int dummy) /* {{{ */
 		int output_len = 0;
 
 		if (zend_is_compiling()) {
-			error_filename = ZSTR_VAL(zend_get_compiled_filename());
+			zend_string *str = zend_get_compiled_filename();
+			error_filename = ZSTR_VAL(str);
 			error_lineno = zend_get_compiled_lineno();
 		} else if (zend_is_executing()) {
 			error_filename = zend_get_executed_filename();

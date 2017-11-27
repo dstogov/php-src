@@ -697,7 +697,7 @@ static zend_string* php_converter_do_convert(UConverter *dest_cnv,
 
 	/* Convert to final encoding */
 	error = U_ZERO_ERROR;
-	ZSTR_LEN(ret) = ucnv_fromUChars(dest_cnv, ZSTR_VAL(ret), ret_len+1, temp, temp_len, &error);
+	ZSTR_SET_LEN(ret, ucnv_fromUChars(dest_cnv, ZSTR_VAL(ret), ret_len+1, temp, temp_len, &error));
 	efree(temp);
 	if (U_FAILURE(error)) {
 		THROW_UFAILURE(objval, "ucnv_fromUChars", error);

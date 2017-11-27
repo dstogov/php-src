@@ -64,12 +64,12 @@
 		zend_set_str_gc_flags(str); \
 	} while (0)
 #define zend_accel_store_interned_string(str) do { \
-		if (!IS_ACCEL_INTERNED(str)) { \
+		if (!ZSTR_IS_PACKED(str) && !IS_ACCEL_INTERNED(str)) { \
 			zend_accel_store_string(str); \
 		} \
 	} while (0)
 #define zend_accel_memdup_interned_string(str) do { \
-		if (!IS_ACCEL_INTERNED(str)) { \
+		if (!ZSTR_IS_PACKED(str) && !IS_ACCEL_INTERNED(str)) { \
 			zend_accel_memdup_string(str); \
 		} \
 	} while (0)

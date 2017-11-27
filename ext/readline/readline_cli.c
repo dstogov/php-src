@@ -89,8 +89,8 @@ static size_t readline_shell_write(const char *str, size_t str_length) /* {{{ */
 		return str_length;
 	}
 
-	if (CLIR_G(pager) && *CLIR_G(pager) && !pager_pipe) {
-		pager_pipe = VCWD_POPEN(CLIR_G(pager), "w");
+	if (CLIR_G(pager) && *ZSTR_VAL(CLIR_G(pager)) && !pager_pipe) {
+		pager_pipe = VCWD_POPEN(ZSTR_VAL(CLIR_G(pager)), "w");
 	}
 	if (pager_pipe) {
 		return fwrite(str, 1, MIN(str_length, 16384), pager_pipe);
@@ -119,8 +119,8 @@ static void cli_readline_init_globals(zend_cli_readline_globals *rg)
 }
 
 PHP_INI_BEGIN()
-	STD_PHP_INI_ENTRY("cli.pager", "", PHP_INI_ALL, OnUpdateString, pager, zend_cli_readline_globals, cli_readline_globals)
-	STD_PHP_INI_ENTRY("cli.prompt", DEFAULT_PROMPT, PHP_INI_ALL, OnUpdateString, prompt, zend_cli_readline_globals, cli_readline_globals)
+	STD_PHP_INI_ENTRY("cli.pager", "", PHP_INI_ALL, OnUpdateStr, pager, zend_cli_readline_globals, cli_readline_globals)
+	STD_PHP_INI_ENTRY("cli.prompt", DEFAULT_PROMPT, PHP_INI_ALL, OnUpdateStr, prompt, zend_cli_readline_globals, cli_readline_globals)
 PHP_INI_END()
 
 
@@ -141,7 +141,7 @@ typedef enum {
 static zend_string *cli_get_prompt(char *block, char prompt) /* {{{ */
 {
 	smart_str retval = {0};
-	char *prompt_spec = CLIR_G(prompt) ? CLIR_G(prompt) : DEFAULT_PROMPT;
+	char *prompt_spec = CLIR_G(prompt) ? ZSTR_VAL(CLIR_G(prompt)) : DEFAULT_PROMPT;
 
 	do {
 		if (*prompt_spec == '\\') {

@@ -89,8 +89,8 @@
 static char *get_default_charset(void) {
 	if (PG(internal_encoding) && PG(internal_encoding)[0]) {
 		return PG(internal_encoding);
-	} else if (SG(default_charset) && SG(default_charset)[0] ) {
-		return SG(default_charset);
+	} else if (SG(default_charset) && ZSTR_VAL(SG(default_charset))[0] ) {
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return NULL;
 }
@@ -404,7 +404,7 @@ static enum entity_charset determine_charset(char *charset_hint)
 		}
 	}
 
-	charset_hint = SG(default_charset);
+	charset_hint = ZSTR_VAL(SG(default_charset));
 	if (charset_hint != NULL && (len=strlen(charset_hint)) != 0) {
 		goto det_charset;
 	}
@@ -1040,7 +1040,7 @@ invalid_code:
 	}
 
 	*q = '\0';
-	ZSTR_LEN(ret) = (size_t)(q - ZSTR_VAL(ret));
+	ZSTR_SET_LEN(ret, (size_t)(q - ZSTR_VAL(ret)));
 }
 /* }}} */
 
@@ -1425,7 +1425,7 @@ encode_amp:
 		}
 	}
 	ZSTR_VAL(replaced)[len] = '\0';
-	ZSTR_LEN(replaced) = len;
+	ZSTR_SET_LEN(replaced, len);
 
 	return replaced;
 }

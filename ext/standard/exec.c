@@ -382,7 +382,7 @@ PHPAPI zend_string *php_escape_shell_cmd(char *str)
 		cmd = zend_string_truncate(cmd, y, 0);
 	}
 
-	ZSTR_LEN(cmd) = y;
+	ZSTR_SET_LEN(cmd, y);
 
 	return cmd;
 }
@@ -468,7 +468,7 @@ PHPAPI zend_string *php_escape_shell_arg(char *str)
 		 * Arbitrary cutoff point of 4096 */
 		cmd = zend_string_truncate(cmd, y, 0);
 	}
-	ZSTR_LEN(cmd) = y;
+	ZSTR_SET_LEN(cmd, y);
 	return cmd;
 }
 /* }}} */

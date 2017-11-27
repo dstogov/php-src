@@ -269,8 +269,8 @@ __forceinline static char *php_win32_cp_get_enc(void)
 
 	if (PG(internal_encoding) && PG(internal_encoding)[0]) {
 		enc = PG(internal_encoding);
-	} else if (SG(default_charset) && SG(default_charset)[0] ) {
-		enc = SG(default_charset);
+	} else if (SG(default_charset) && ZSTR_VAL(SG(default_charset))[0] ) {
+		enc = ZSTR_VAL(SG(default_charset));
 	} else {
 		zenc = zend_multibyte_get_internal_encoding();
 		if (zenc) {
@@ -431,8 +431,8 @@ static BOOL php_win32_cp_cli_io_setup(void)
 {/*{{{*/
 	BOOL ret = TRUE;
 
-	if (PG(input_encoding) && PG(input_encoding)[0]) {
-		cur_in_cp = php_win32_cp_get_by_enc(PG(input_encoding));
+	if (PG(input_encoding) && ZSTR_VAL(PG(input_encoding))[0]) {
+		cur_in_cp = php_win32_cp_get_by_enc(ZSTR_VAL(PG(input_encoding)));
 		if (!cur_in_cp) {
 			cur_in_cp = cur_cp;
 		}

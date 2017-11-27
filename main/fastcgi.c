@@ -1744,7 +1744,7 @@ void fcgi_set_mgmt_var(const char * name, size_t name_len, const char * value, s
 
 void fcgi_free_mgmt_var_cb(zval *zv)
 {
-	pefree(Z_STR_P(zv), 1);
+	zend_string_free(Z_STR_P(zv));
 }
 
 const char *fcgi_get_last_client_ip()

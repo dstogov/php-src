@@ -124,11 +124,11 @@ PHPAPI int core_globals_id;
 static char *get_safe_charset_hint(void) {
 	ZEND_TLS char *lastHint = NULL;
 	ZEND_TLS char *lastCodeset = NULL;
-	char *hint = SG(default_charset);
+	char *hint = ZSTR_VAL(SG(default_charset));
 	size_t len = strlen(hint);
 	size_t i = 0;
 
-	if (lastHint == SG(default_charset)) {
+	if (lastHint == ZSTR_VAL(SG(default_charset))) {
 		return lastCodeset;
 	}
 
@@ -427,7 +427,7 @@ static PHP_INI_DISP(display_errors_mode)
 static PHP_INI_MH(OnUpdateDefaultCharset)
 {
 	if (new_value) {
-		OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+		OnUpdateStr(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 #ifdef PHP_WIN32
 		php_win32_cp_do_update(ZSTR_VAL(new_value));
 #endif
@@ -455,7 +455,7 @@ static PHP_INI_MH(OnUpdateInternalEncoding)
 static PHP_INI_MH(OnUpdateInputEncoding)
 {
 	if (new_value) {
-		OnUpdateString(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
+		OnUpdateStr(entry, new_value, mh_arg1, mh_arg2, mh_arg3, stage);
 #ifdef PHP_WIN32
 		php_win32_cp_do_update(NULL);
 #endif
@@ -555,7 +555,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN("enable_dl",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			enable_dl,				php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("expose_php",			"1",		PHP_INI_SYSTEM,		OnUpdateBool,			expose_php,				php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("docref_root", 			"", 		PHP_INI_ALL,		OnUpdateString,			docref_root,			php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("docref_ext",				"",			PHP_INI_ALL,		OnUpdateString,			docref_ext,				php_core_globals,	core_globals)
+	STD_PHP_INI_ENTRY("docref_ext",				"",			PHP_INI_ALL,		OnUpdateStr,			docref_ext,				php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("html_errors",			"1",		PHP_INI_ALL,		OnUpdateBool,			html_errors,			php_core_globals,	core_globals)
 	STD_PHP_INI_BOOLEAN("xmlrpc_errors",		"0",		PHP_INI_SYSTEM,		OnUpdateBool,			xmlrpc_errors,			php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("xmlrpc_error_number",	"0",		PHP_INI_ALL,		OnUpdateLong,			xmlrpc_error_number,	php_core_globals,	core_globals)
@@ -603,7 +603,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("max_input_vars",			"1000",		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateLongGEZero,	max_input_vars,						php_core_globals,	core_globals)
 
 	STD_PHP_INI_ENTRY("user_dir",				NULL,		PHP_INI_SYSTEM,		OnUpdateString,			user_dir,				php_core_globals,	core_globals)
-	STD_PHP_INI_ENTRY("variables_order",		"EGPCS",	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateStringUnempty,	variables_order,		php_core_globals,	core_globals)
+	STD_PHP_INI_ENTRY("variables_order",		"EGPCS",	PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateStrUnempty,	variables_order,		php_core_globals,	core_globals)
 	STD_PHP_INI_ENTRY("request_order",			NULL,		PHP_INI_SYSTEM|PHP_INI_PERDIR,		OnUpdateString,	request_order,		php_core_globals,	core_globals)
 
 	STD_PHP_INI_ENTRY("error_append_string",	NULL,		PHP_INI_ALL,		OnUpdateString,			error_append_string,	php_core_globals,	core_globals)
@@ -630,7 +630,7 @@ PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("realpath_cache_size",	"4096K",	PHP_INI_SYSTEM,		OnUpdateLong,	realpath_cache_size_limit,	virtual_cwd_globals,	cwd_globals)
 	STD_PHP_INI_ENTRY("realpath_cache_ttl",		"120",		PHP_INI_SYSTEM,		OnUpdateLong,	realpath_cache_ttl,			virtual_cwd_globals,	cwd_globals)
 
-	STD_PHP_INI_ENTRY("user_ini.filename",		".user.ini",	PHP_INI_SYSTEM,		OnUpdateString,		user_ini_filename,	php_core_globals,		core_globals)
+	STD_PHP_INI_ENTRY("user_ini.filename",		".user.ini",	PHP_INI_SYSTEM,		OnUpdateStr,		user_ini_filename,	php_core_globals,		core_globals)
 	STD_PHP_INI_ENTRY("user_ini.cache_ttl",		"300",			PHP_INI_SYSTEM,		OnUpdateLong,		user_ini_cache_ttl,	php_core_globals,		core_globals)
 	STD_PHP_INI_ENTRY("hard_timeout",			"2",			PHP_INI_SYSTEM,		OnUpdateLong,		hard_timeout,		zend_executor_globals,	executor_globals)
 #ifdef PHP_WIN32
@@ -907,8 +907,8 @@ PHPAPI ZEND_COLD void php_verror(const char *docref, const char *params, int typ
 				}
 			}
 			/* add the extension if it is set in ini */
-			if (PG(docref_ext) && strlen(PG(docref_ext))) {
-				spprintf(&docref_buf, 0, "%s%s", ref, PG(docref_ext));
+			if (PG(docref_ext) && ZSTR_LEN(PG(docref_ext))) {
+				spprintf(&docref_buf, 0, "%s%s", ref, ZSTR_VAL(PG(docref_ext)));
 				efree(ref);
 			}
 			docref = docref_buf;

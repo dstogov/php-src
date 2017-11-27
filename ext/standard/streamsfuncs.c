@@ -415,7 +415,7 @@ PHP_FUNCTION(stream_socket_recvfrom)
 			ZVAL_STR(zremote, remote_addr);
 		}
 		ZSTR_VAL(read_buf)[recvd] = '\0';
-		ZSTR_LEN(read_buf) = recvd;
+		ZSTR_SET_LEN(read_buf, recvd);
 		RETURN_NEW_STR(read_buf);
 	}
 

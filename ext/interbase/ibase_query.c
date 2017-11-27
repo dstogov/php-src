@@ -1461,7 +1461,7 @@ static int _php_ibase_arr_zval(zval *ar_zval, char *data, zend_ulong data_size, 
 		if (ib_array->ar_desc.array_desc_dtype == blr_varying ||
 			ib_array->ar_desc.array_desc_dtype == blr_varying2) {
 
-			Z_STRLEN_P(ar_zval) = strlen(Z_STRVAL_P(ar_zval));
+			ZSTR_SET_LEN(Z_STR_P(ar_zval), strlen(Z_STRVAL_P(ar_zval)));
 		}
 	}
 	return SUCCESS;

@@ -749,6 +749,46 @@ ZEND_API ZEND_INI_MH(OnUpdateStringUnempty) /* {{{ */
 }
 /* }}} */
 
+ZEND_API ZEND_INI_MH(OnUpdateStr) /* {{{ */
+{
+	char **p;
+#ifndef ZTS
+	char *base = (char *) mh_arg2;
+#else
+	char *base;
+
+	base = (char *) ts_resource(*((int *) mh_arg2));
+#endif
+
+	p = (char **) (base+(size_t) mh_arg1);
+
+	*p = new_value;
+	return SUCCESS;
+}
+/* }}} */
+
+ZEND_API ZEND_INI_MH(OnUpdateStrUnempty) /* {{{ */
+{
+	char **p;
+#ifndef ZTS
+	char *base = (char *) mh_arg2;
+#else
+	char *base;
+
+	base = (char *) ts_resource(*((int *) mh_arg2));
+#endif
+
+	if (new_value && !ZSTR_VAL(new_value)[0]) {
+		return FAILURE;
+	}
+
+	p = (char **) (base+(size_t) mh_arg1);
+
+	*p = new_value;
+	return SUCCESS;
+}
+/* }}} */
+
 /*
  * Local variables:
  * tab-width: 4

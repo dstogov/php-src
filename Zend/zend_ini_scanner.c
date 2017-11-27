@@ -341,7 +341,7 @@ static void zend_ini_escape_string(zval *lval, char *str, int len, char quote_ty
 				case '\\':
 				case '$':
 					*t++ = *s;
-					Z_STRLEN_P(lval)--;
+					ZSTR_SET_LEN(Z_STR_P(lval), Z_STRLEN_P(lval)-1);
 					break;
 				default:
 					*t++ = '\\';

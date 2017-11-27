@@ -167,7 +167,7 @@ typedef struct _zend_accel_directives {
 	zend_long           memory_consumption;
 	zend_long           max_accelerated_files;
 	double         max_wasted_percentage;
-	char          *user_blacklist_filename;
+	zend_string   *user_blacklist_filename;
 	zend_long           consistency_checks;
 	zend_long           force_restart_timeout;
 	zend_bool      use_cwd;
@@ -198,7 +198,7 @@ typedef struct _zend_accel_directives {
 	zend_long           interned_strings_buffer;
 	char          *restrict_api;
 #ifndef ZEND_WIN32
-	char          *lockfile_path;
+	zend_string   *lockfile_path;
 #endif
 #ifdef HAVE_OPCACHE_FILE_CACHE
 	char          *file_cache;

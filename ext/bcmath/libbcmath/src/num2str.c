@@ -79,6 +79,6 @@ zend_string
 
 	/* Terminate the string and return it! */
 	*sptr = '\0';
-	ZSTR_LEN(str) = sptr - (char *)ZSTR_VAL(str);
+	ZSTR_SET_LEN(str, sptr - (char *)ZSTR_VAL(str));
 	return str;
 }

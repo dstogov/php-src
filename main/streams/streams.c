@@ -1050,7 +1050,7 @@ PHPAPI zend_string *php_stream_get_record(php_stream *stream, size_t maxlen, con
 	ret_buf = zend_string_alloc(tent_ret_len, 0);
 	/* php_stream_read will not call ops->read here because the necessary
 	 * data is guaranteedly buffered */
-	ZSTR_LEN(ret_buf) = php_stream_read(stream, ZSTR_VAL(ret_buf), tent_ret_len);
+	ZSTR_SET_LEN(ret_buf, php_stream_read(stream, ZSTR_VAL(ret_buf), tent_ret_len));
 
 	if (found_delim) {
 		stream->readpos += delim_len;
@@ -1414,7 +1414,7 @@ PHPAPI zend_string *_php_stream_copy_to_mem(php_stream *src, size_t maxlen, int 
 		}
 		if (len) {
 			*ptr = '\0';
-			ZSTR_LEN(result) = len;
+			ZSTR_SET_LEN(result, len);
 		} else {
 			zend_string_free(result);
 			result = NULL;

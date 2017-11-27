@@ -35,7 +35,7 @@ ZEND_API void ZEND_FASTCALL smart_str_erealloc(smart_str *str, size_t len)
 				? SMART_STR_START_LEN
 				: SMART_STR_NEW_LEN(len);
 		str->s = zend_string_alloc(str->a, 0);
-		ZSTR_LEN(str->s) = 0;
+		ZSTR_SET_LEN(str->s, 0);
 	} else {
 		str->a = SMART_STR_NEW_LEN(len);
 		str->s = (zend_string *) erealloc2(str->s, str->a + _ZSTR_HEADER_SIZE + 1, _ZSTR_HEADER_SIZE + ZSTR_LEN(str->s));
@@ -49,7 +49,7 @@ ZEND_API void ZEND_FASTCALL smart_str_realloc(smart_str *str, size_t len)
 				? SMART_STR_START_LEN
 				: SMART_STR_NEW_LEN(len);
 		str->s = zend_string_alloc(str->a, 1);
-		ZSTR_LEN(str->s) = 0;
+		ZSTR_SET_LEN(str->s, 0);
 	} else {
 		str->a = SMART_STR_NEW_LEN(len);
 		str->s = (zend_string *) perealloc(str->s, str->a + _ZSTR_HEADER_SIZE + 1, 1);
@@ -81,7 +81,7 @@ ZEND_API void ZEND_FASTCALL smart_str_append_escaped(smart_str *str, const char 
 
 	smart_str_alloc(str, len, 0);
 	res = &ZSTR_VAL(str->s)[ZSTR_LEN(str->s)];
-	ZSTR_LEN(str->s) += len;
+	ZSTR_SET_LEN(str->s, ZSTR_LEN(str->s) + len);
 
 	for (i = 0; i < l; ++i) {
 		unsigned char c = s[i];

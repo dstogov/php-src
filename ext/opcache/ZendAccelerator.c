@@ -391,7 +391,7 @@ static zend_string *accel_find_interned_string(zend_string *str)
 	uint32_t idx;
 	Bucket *arData, *p;
 
-	if (IS_ACCEL_INTERNED(str)) {
+	if (IS_ACCEL_INTERNED(str) || ZSTR_IS_PACKED(str)) {
 		/* this is already an interned string */
 		return str;
 	}
@@ -435,9 +435,15 @@ zend_string *accel_new_interned_string(zend_string *str)
 	}
 #endif
 
-	if (IS_ACCEL_INTERNED(str)) {
+	if (IS_ACCEL_INTERNED(str) || ZSTR_IS_PACKED(str)) {
 		/* this is already an interned string */
 		return str;
+	}
+
+	if (ZSTR_LEN(str) <= MAX_PACKED_STRING_LEN) {
+		zend_string *ret = zend_new_packed_string(ZSTR_VAL(str), ZSTR_LEN(str));
+		zend_string_release(str);
+		return ret;
 	}
 
 	h = zend_string_hash_val(str);
@@ -479,8 +485,8 @@ zend_string *accel_new_interned_string(zend_string *str)
 	GC_TYPE(p->key) = IS_STRING;
 	GC_FLAGS(p->key) = IS_STR_INTERNED | IS_STR_PERMANENT;
 #endif
-	ZSTR_H(p->key) = ZSTR_H(str);
-	ZSTR_LEN(p->key) = ZSTR_LEN(str);
+	ZSTR_SET_H(p->key, ZSTR_H(str));
+	ZSTR_SET_LEN(p->key, ZSTR_LEN(str));
 	memcpy(ZSTR_VAL(p->key), ZSTR_VAL(str), ZSTR_LEN(str));
 	ZVAL_INTERNED_STR(&p->val, p->key);
 	Z_NEXT(p->val) = HT_HASH(&ZCSG(interned_strings), nIndex);
@@ -491,6 +497,14 @@ zend_string *accel_new_interned_string(zend_string *str)
 
 static zend_string *accel_new_interned_string_for_php(zend_string *str)
 {
+	if (ZSTR_IS_PACKED(str)) {
+		return str;
+	}
+	if (ZSTR_LEN(str) <= MAX_PACKED_STRING_LEN) {
+		zend_string *ret = zend_new_packed_string(ZSTR_VAL(str), ZSTR_LEN(str));
+		zend_string_release(str);
+		return ret;
+	}
 	zend_string_hash_val(str);
 	if (ZCG(counted)) {
 		zend_string *ret = accel_find_interned_string(str);
@@ -529,13 +543,16 @@ static zend_string *accel_find_interned_string_ex(zend_ulong h, const char *str,
 
 static zend_string *accel_init_interned_string_for_php(const char *str, size_t size, int permanent)
 {
+	if (size <= MAX_PACKED_STRING_LEN) {
+		return zend_new_packed_string(str, size);
+	}
 	if (ZCG(counted)) {
 	    zend_ulong h = zend_inline_hash_func(str, size);
 		zend_string *ret = accel_find_interned_string_ex(h, str, size);
 
 		if (!ret) {
 			ret = zend_string_init(str, size, permanent);
-			ZSTR_H(ret) = h;
+			ZSTR_SET_H(ret, h);
 		}
 
 		return ret;
@@ -551,14 +568,6 @@ static void accel_copy_permanent_strings(zend_new_interned_string_func_t new_int
 	Bucket *p, *q;
 	HashTable *ht;
 
-	/* empty string */
-	zend_empty_string = new_interned_string(zend_empty_string);
-	for (j = 0; j < 256; j++) {
-		char s[2];
-		s[0] = j;
-		s[1] = 0;
-		zend_one_char_string[j] = new_interned_string(zend_string_init(s, 1, 0));
-	}
 	for (j = 0; j < ZEND_STR_LAST_KNOWN; j++) {
 		zend_known_strings[j] = new_interned_string(zend_known_strings[j]);
 	}
@@ -2826,9 +2835,9 @@ file_cache_fallback:
 	accel_blacklist.entries = NULL;
 	if (ZCG(enabled) && accel_startup_ok &&
 	    ZCG(accel_directives).user_blacklist_filename &&
-	    *ZCG(accel_directives.user_blacklist_filename)) {
+	    *ZSTR_VAL(ZCG(accel_directives.user_blacklist_filename))) {
 		zend_accel_blacklist_init(&accel_blacklist);
-		zend_accel_blacklist_load(&accel_blacklist, ZCG(accel_directives.user_blacklist_filename));
+		zend_accel_blacklist_load(&accel_blacklist, ZSTR_VAL(ZCG(accel_directives.user_blacklist_filename)));
 	}
 
 	zend_optimizer_startup();

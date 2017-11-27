@@ -606,16 +606,16 @@ static char *get_internal_encoding(void) {
 	if (PG(internal_encoding) && PG(internal_encoding)[0]) {
 		return PG(internal_encoding);
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }
 
 static char *get_input_encoding(void) {
-	if (PG(input_encoding) && PG(input_encoding)[0]) {
-		return PG(input_encoding);
+	if (PG(input_encoding) && ZSTR_VAL(PG(input_encoding))[0]) {
+		return ZSTR_VAL(PG(input_encoding));
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }
@@ -624,7 +624,7 @@ static char *get_output_encoding(void) {
 	if (PG(output_encoding) && PG(output_encoding)[0]) {
 		return PG(output_encoding);
 	} else if (SG(default_charset)) {
-		return SG(default_charset);
+		return ZSTR_VAL(SG(default_charset));
 	}
 	return "";
 }

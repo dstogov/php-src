@@ -1328,7 +1328,7 @@ static PHP_NAMED_FUNCTION(zif_zip_entry_read)
 		n = zip_fread(zr_rsrc->zf, ZSTR_VAL(buffer), ZSTR_LEN(buffer));
 		if (n > 0) {
 			ZSTR_VAL(buffer)[n] = '\0';
-			ZSTR_LEN(buffer) = n;
+			ZSTR_SET_LEN(buffer, n);
 			RETURN_NEW_STR(buffer);
 		} else {
 			zend_string_free(buffer);
@@ -2869,7 +2869,7 @@ static void php_zip_get_from(INTERNAL_FUNCTION_PARAMETERS, int type) /* {{{ */
 
 	zip_fclose(zf);
 	ZSTR_VAL(buffer)[n] = '\0';
-	ZSTR_LEN(buffer) = n;
+	ZSTR_SET_LEN(buffer, n);
 	RETURN_NEW_STR(buffer);
 }
 /* }}} */

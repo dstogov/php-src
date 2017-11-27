@@ -384,7 +384,7 @@ static PHP_FUNCTION(bzread)
 		RETURN_FALSE;
 	}
 	data = zend_string_alloc(len, 0);
-	ZSTR_LEN(data) = php_stream_read(stream, ZSTR_VAL(data), ZSTR_LEN(data));
+	ZSTR_SET_LEN(data, php_stream_read(stream, ZSTR_VAL(data), ZSTR_LEN(data)));
 	ZSTR_VAL(data)[ZSTR_LEN(data)] = '\0';
 
 	RETURN_NEW_STR(data);
@@ -551,7 +551,7 @@ static PHP_FUNCTION(bzcompress)
 	} else {
 		/* Copy the buffer, we have perhaps allocate a lot more than we need,
 		   so we erealloc() the buffer to the proper size */
-		ZSTR_LEN(dest) = dest_len;
+		ZSTR_SET_LEN(dest, dest_len);
 		ZSTR_VAL(dest)[ZSTR_LEN(dest)] = '\0';
 		RETURN_NEW_STR(dest);
 	}
@@ -618,7 +618,7 @@ static PHP_FUNCTION(bzdecompress)
 #endif
 		{
 			dest = zend_string_safe_realloc(dest, 1, (size_t)size, 1, 0);
-			ZSTR_LEN(dest) = (size_t)size;
+			ZSTR_SET_LEN(dest, (size_t)size);
 			ZSTR_VAL(dest)[(size_t)size] = '\0';
 			RETVAL_STR(dest);
 		}
