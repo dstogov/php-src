@@ -897,8 +897,8 @@ static zend_always_inline zend_uchar zval_get_type(const zval* pz) {
 extern ZEND_API zend_bool zend_rc_debug;
 # define ZEND_RC_MOD_CHECK(p) do { \
 		if (zend_rc_debug) { \
-			ZEND_ASSERT(!((p)->u.v.flags & GC_IMMUTABLE)); \
-			ZEND_ASSERT(((p)->u.v.flags & (GC_PERSISTENT|GC_PERSISTENT_LOCAL)) != GC_PERSISTENT); \
+			ZEND_ASSERT(!((p)->u.v.gc_flags & GC_IMMUTABLE)); \
+			ZEND_ASSERT(((p)->u.v.gc_flags & (GC_PERSISTENT|GC_PERSISTENT_LOCAL)) != GC_PERSISTENT); \
 		} \
 	} while (0)
 # define GC_MAKE_PERSISTENT_LOCAL(p) do { \
