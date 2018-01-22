@@ -35,7 +35,6 @@
 
 #define HT_POISONED_PTR ((HashTable *) (intptr_t) -1)
 
-/* TODO */
 #if ZEND_DEBUG
 
 #define HT_OK					0x00
