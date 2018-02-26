@@ -111,6 +111,7 @@
 #define GC_ROOT_BUFFER_DEFAULT_SIZE \
 	(GC_DEFAULT_COLLECTION_THRESHOLD + GC_FIRST_REAL_ROOT)
 #define GC_MAX_UNCOMPRESSED GC_ROOT_BUFFER_DEFAULT_SIZE
+#define GC_COMPRESS_FACTOR 4096
 
 #define GC_TO_BUF(addr) (GC_G(buf) + (addr))
 #define GC_TO_ADDR(buffer) ((buffer) - GC_G(buf))
@@ -238,6 +239,8 @@ static void gc_trace_ref(zend_refcounted *ref) {
 
 static zend_always_inline void gc_remove_from_roots(gc_root_buffer *root)
 {
+	root->ref = NULL; /* TODO: this assignment is necessary only to avoid
+	                           conflicts in gc_decompress() ??? */
 	GC_NEXT_BUF(root)->prev = root->prev;
 	GC_PREV_BUF(root)->next = root->next;
 	root->prev = GC_G(unused);
@@ -333,8 +336,6 @@ static void gc_grow_root_buffer() {
 	size_t new_size = (GC_G(buf_size) - GC_FIRST_REAL_ROOT) * 2 + GC_FIRST_REAL_ROOT;
 	GC_G(buf) = perealloc(GC_G(buf), sizeof(gc_root_buffer) * new_size, 1);
 	GC_G(buf_size) = new_size;
-	//???recompress
-	//???ZEND_ASSERT(0);
 }
 
 ZEND_API zend_bool gc_set_enabled(zend_bool enable)
@@ -359,23 +360,24 @@ static zend_always_inline uint32_t gc_compress(uint32_t idx)
 	if (EXPECTED(idx < GC_MAX_UNCOMPRESSED)) {
 		return idx;
 	}
-	return GC_MAX_UNCOMPRESSED;
+	return GC_MAX_UNCOMPRESSED + ((idx - GC_MAX_UNCOMPRESSED) % GC_COMPRESS_FACTOR);
 }
 
 static zend_always_inline uint32_t gc_decompress(uint32_t idx, zend_refcounted *ref)
 {
 	if (EXPECTED(idx < GC_MAX_UNCOMPRESSED)) {
 		return idx;
-	}
-	while (idx < GC_G(first_unused)) {
-		gc_root_buffer *root = GC_TO_BUF(idx);
+	} else {
+		while (idx < GC_G(first_unused)) {
+			gc_root_buffer *root = GC_TO_BUF(idx);
 
-		if (root->ref == ref) {
-			return idx;
+			if (root->ref == ref) {
+				return idx;
+			}
+			idx += GC_COMPRESS_FACTOR;
 		}
-		idx++;
+		ZEND_ASSERT(0);
 	}
-	ZEND_ASSERT(0);
 }
 
 ZEND_API void ZEND_FASTCALL gc_possible_root(zend_refcounted *ref)
@@ -459,7 +461,6 @@ ZEND_API void ZEND_FASTCALL gc_remove_from_buffer(zend_refcounted *ref)
 
 	addr = gc_decompress(GC_ADDRESS(GC_INFO(ref)), ref);
 	root = GC_G(buf) + addr;
-	root->ref = NULL;
 	gc_remove_from_roots(root);
 	if (GC_REF_GET_COLOR(ref) != GC_BLACK) {
 		GC_TRACE_SET_COLOR(ref, GC_PURPLE);
@@ -989,7 +990,6 @@ static int gc_collect_roots(uint32_t *flags)
 		if (GC_REF_GET_COLOR(current->ref) == GC_BLACK) {
 			zend_refcounted *ref = current->ref;
 			GC_INFO(current->ref) = 0; /* reset GC_ADDRESS() and keep GC_BLACK */
-			current->ref = NULL;
 			gc_remove_from_roots(current);
 		}
 		current = next;
@@ -1042,7 +1042,6 @@ tail_call:
 	     GC_REF_GET_COLOR(ref) == GC_BLACK)) {
 		GC_TRACE_REF(ref, "removing from buffer");
 		if (root) {
-			root->ref = NULL;
 			gc_remove_from_roots(root);
 			GC_INFO(ref) = 0;
 			root = NULL;
