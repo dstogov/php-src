@@ -102,7 +102,7 @@
 
 #define GC_HAS_DESTRUCTORS  (1<<0)
 
-#define GC_INVALID          ((uint32_t) -1)
+#define GC_INVALID          ((uint32_t) 0)
 #define GC_ROOTS_SENTINEL   ((uint32_t) 0)
 #define GC_TO_FREE_SENTINEL ((uint32_t) 1)
 #define GC_FIRST_REAL_ROOT  ((uint32_t) 2)
@@ -239,12 +239,32 @@ static void gc_trace_ref(zend_refcounted *ref) {
 
 static zend_always_inline void gc_remove_from_roots(gc_root_buffer *root)
 {
+	uint32_t next, prev;
+
 	root->ref = NULL; /* TODO: this assignment is necessary only to avoid
 	                           conflicts in gc_decompress() ??? */
-	GC_NEXT_BUF(root)->prev = root->prev;
-	GC_PREV_BUF(root)->next = root->next;
+	prev = root->prev;
 	root->prev = GC_G(unused);
 	GC_G(unused) = GC_TO_ADDR(root);
+	next = root->next;
+	GC_TO_BUF(next)->prev = prev;
+	GC_TO_BUF(prev)->next = next;
+	GC_G(num_roots)--;
+	GC_BENCH_DEC(root_buf_length);
+}
+
+static zend_always_inline void gc_remove_from_roots_ex(gc_root_buffer *root, uint32_t addr)
+{
+	uint32_t next, prev;
+
+	root->ref = NULL; /* TODO: this assignment is necessary only to avoid
+	                           conflicts in gc_decompress() ??? */
+	prev = root->prev;
+	root->prev = GC_G(unused);
+	GC_G(unused) = addr;
+	next = root->next;
+	GC_TO_BUF(next)->prev = prev;
+	GC_TO_BUF(prev)->next = next;
 	GC_G(num_roots)--;
 	GC_BENCH_DEC(root_buf_length);
 }
@@ -412,37 +432,33 @@ ZEND_API void ZEND_FASTCALL gc_possible_root(zend_refcounted *ref)
 	}
 
 	newRootAddr = GC_G(unused);
-	if (newRootAddr != GC_INVALID) {
+	if (EXPECTED(newRootAddr != GC_INVALID)) {
 		newRoot = GC_TO_BUF(newRootAddr);
 		GC_G(unused) = newRoot->prev;
-	} else if (GC_G(first_unused) != GC_G(buf_size)) {
+	} else if (EXPECTED(GC_G(first_unused) != GC_G(buf_size))) {
 		newRootAddr = GC_G(first_unused);
-		newRoot = GC_TO_BUF(newRootAddr);
 		GC_G(first_unused)++;
+		newRoot = GC_TO_BUF(newRootAddr);
 	} else {
-		if (GC_G(buf) == NULL) {
-			/* This means that the GC is completely disabled, rather than just disabled
-			 * temporarily at run-time. In this case we just let things leak. */
- 			return;
- 		}
-
 		gc_grow_root_buffer();
 		newRootAddr = GC_G(first_unused);
-		newRoot = GC_TO_BUF(newRootAddr);
 		GC_G(first_unused)++;
- 	}
+		newRoot = GC_TO_BUF(newRootAddr);
+	}
+
+	{
+		gc_root_buffer *roots = GC_ROOTS();
+		uint32_t next = roots->next;
+
+		newRoot->next = next;
+		newRoot->prev = GC_ROOTS_SENTINEL;
+		GC_TO_BUF(next)->prev = newRootAddr;
+		roots->next = newRootAddr;
+	}
 
 	GC_TRACE_SET_COLOR(ref, GC_PURPLE);
 	GC_INFO(ref) = gc_compress(newRootAddr) | GC_PURPLE;
 	newRoot->ref = ref;
-
-	{
-		gc_root_buffer *roots = GC_ROOTS();
-		newRoot->next = roots->next;
-		newRoot->prev = GC_ROOTS_SENTINEL;
-		GC_NEXT_BUF(roots)->prev = newRootAddr;
-		roots->next = newRootAddr;
-	}
 
 	GC_G(num_roots)++;
 	GC_BENCH_INC(zval_buffered);
@@ -459,17 +475,20 @@ ZEND_API void ZEND_FASTCALL gc_remove_from_buffer(zend_refcounted *ref)
 
 	GC_BENCH_INC(zval_remove_from_buffer);
 
-	addr = gc_decompress(GC_ADDRESS(GC_INFO(ref)), ref);
-	root = GC_G(buf) + addr;
-	gc_remove_from_roots(root);
-	if (GC_REF_GET_COLOR(ref) != GC_BLACK) {
-		GC_TRACE_SET_COLOR(ref, GC_PURPLE);
-	}
+	addr = GC_INFO(ref);
 	GC_INFO(ref) = 0;
+	addr = gc_decompress(GC_ADDRESS(addr), ref);
+	root = GC_G(buf) + addr;
 
 	/* updete next root that is going to be freed */
-	if (GC_G(next_to_free) == addr) {
+	if (UNEXPECTED(GC_G(next_to_free) == addr)) {
 		GC_G(next_to_free) = root->next;
+	}
+
+	gc_remove_from_roots_ex(root, addr);
+
+	if (GC_REF_GET_COLOR(ref) != GC_BLACK) {
+		GC_TRACE_SET_COLOR(ref, GC_BLACK);
 	}
 }
 
@@ -1148,7 +1167,7 @@ ZEND_API int zend_gc_collect_cycles(void)
 	if (GC_G(gc_protected)) {
 		return 0;
 	}
-	
+
 	count = 0;
 	roots = GC_ROOTS();
 	if (roots->next != GC_ROOTS_SENTINEL) {
