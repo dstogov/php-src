@@ -780,6 +780,9 @@ void zend_optimizer_compact_literals(zend_op_array *op_array, zend_optimizer_ctx
 
 		if (1) {
 			opline = op_array->opcodes;
+			if (opline->opcode == ZEND_ENTER) {
+				opline++;
+			}
 			while (1) {
 				if (opline->opcode == ZEND_RECV_INIT) {
 					zval *val = &op_array->literals[opline->op2.constant];

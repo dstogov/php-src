@@ -5914,6 +5914,8 @@ void zend_compile_func_decl(znode *result, zend_ast *ast, zend_bool toplevel) /*
 
 	zend_oparray_context_begin(&orig_oparray_context);
 
+	zend_emit_op(NULL, ZEND_ENTER, NULL, NULL);
+
 	if (CG(compiler_options) & ZEND_COMPILE_EXTENDED_STMT) {
 		zend_op *opline_ext = zend_emit_op(NULL, ZEND_EXT_NOP, NULL, NULL);
 		opline_ext->lineno = decl->start_lineno;
@@ -5950,6 +5952,13 @@ void zend_compile_func_decl(znode *result, zend_ast *ast, zend_bool toplevel) /*
 
 	zend_do_extended_stmt();
 	zend_emit_final_return(0);
+
+	ZEND_ASSERT(op_array->opcodes[0].opcode == ZEND_ENTER);
+	op_array->opcodes[0].lineno = decl->start_lineno;
+	op_array->opcodes[0].op1.num = op_array->num_args;
+	op_array->opcodes[0].op2.num = op_array->last_var;
+	op_array->opcodes[0].extended_value =
+		(op_array->fn_flags & ZEND_ACC_HAS_TYPE_HINTS) != 0;
 
 	pass_two(CG(active_op_array));
 	zend_oparray_context_end(&orig_oparray_context);

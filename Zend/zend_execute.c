@@ -3347,12 +3347,6 @@ ZEND_API void zend_free_compiled_variables(zend_execute_data *execute_data) /* {
 		} \
 	} while (0)
 
-#define ZEND_VM_LOOP_INTERRUPT_CHECK() do { \
-		if (UNEXPECTED(EG(vm_interrupt))) { \
-			ZEND_VM_LOOP_INTERRUPT(); \
-		} \
-	} while (0)
-
 /*
  * Stack Frame Layout (the whole stack frame is allocated at once)
  * ==================
@@ -3391,16 +3385,6 @@ static zend_never_inline void zend_copy_extra_args(EXECUTE_DATA_D)
 	size_t delta;
 	uint32_t count;
 	uint32_t type_flags = 0;
-
-	if (EXPECTED((op_array->fn_flags & ZEND_ACC_HAS_TYPE_HINTS) == 0)) {
-		/* Skip useless ZEND_RECV and ZEND_RECV_INIT opcodes */
-#if defined(ZEND_VM_IP_GLOBAL_REG) && ((ZEND_VM_KIND == ZEND_VM_KIND_CALL) || (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID))
-		opline += first_extra_arg;
-#else
-		EX(opline) += first_extra_arg;
-#endif
-
-	}
 
 	/* move extra args into separate array after all CV and TMP vars */
 	src = EX_VAR_NUM(num_args - 1);
@@ -3443,7 +3427,6 @@ static zend_always_inline void zend_init_cvs(uint32_t first, uint32_t last EXECU
 
 static zend_always_inline void i_init_func_execute_data(zend_op_array *op_array, zval *return_value, zend_bool may_be_trampoline EXECUTE_DATA_DC) /* {{{ */
 {
-	uint32_t first_extra_arg, num_args;
 	ZEND_ASSERT(EX(func) == (zend_function*)op_array);
 
 #if defined(ZEND_VM_IP_GLOBAL_REG) && ((ZEND_VM_KIND == ZEND_VM_KIND_CALL) || (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID))
@@ -3453,28 +3436,7 @@ static zend_always_inline void i_init_func_execute_data(zend_op_array *op_array,
 #endif
 	EX(call) = NULL;
 	EX(return_value) = return_value;
-
-	/* Handle arguments */
-	first_extra_arg = op_array->num_args;
-	num_args = EX_NUM_ARGS();
-	if (UNEXPECTED(num_args > first_extra_arg)) {
-		if (!may_be_trampoline || EXPECTED(!(op_array->fn_flags & ZEND_ACC_CALL_VIA_TRAMPOLINE))) {
-			zend_copy_extra_args(EXECUTE_DATA_C);
-		}
-	} else if (EXPECTED((op_array->fn_flags & ZEND_ACC_HAS_TYPE_HINTS) == 0)) {
-		/* Skip useless ZEND_RECV and ZEND_RECV_INIT opcodes */
-#if defined(ZEND_VM_IP_GLOBAL_REG) && ((ZEND_VM_KIND == ZEND_VM_KIND_CALL) || (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID))
-		opline += num_args;
-#else
-		EX(opline) += num_args;
-#endif
-	}
-
-	/* Initialize CV variables (skip arguments) */
-	zend_init_cvs(num_args, op_array->last_var EXECUTE_DATA_CC);
-
 	EX(run_time_cache) = RUN_TIME_CACHE(op_array);
-
 	EG(current_execute_data) = execute_data;
 }
 /* }}} */

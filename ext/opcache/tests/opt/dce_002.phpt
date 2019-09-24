@@ -25,11 +25,12 @@ $_main: ; (lines=1, args=0, vars=0, tmps=0)
     ; %sdce_002.php:1-11
 L0 (11):    RETURN int(1)
 
-foo: ; (lines=5, args=1, vars=2, tmps=0)
+foo: ; (lines=6, args=1, vars=2, tmps=0)
     ; (after optimizer)
     ; %sdce_002.php:2-9
-L0 (2):     CV0($a) = RECV 1
-L1 (3):     CV0($a) = QM_ASSIGN int(10)
-L2 (5):     CV1($x) = FUNC_GET_ARGS
-L3 (6):     CV0($a) = QM_ASSIGN int(30)
-L4 (8):     RETURN CV1($x)
+L0 (2):     ENTER 1 1 2
+L1 (2):     CV0($a) = RECV 1
+L2 (3):     CV0($a) = QM_ASSIGN int(10)
+L3 (5):     CV1($x) = FUNC_GET_ARGS
+L4 (6):     CV0($a) = QM_ASSIGN int(30)
+L5 (8):     RETURN CV1($x)

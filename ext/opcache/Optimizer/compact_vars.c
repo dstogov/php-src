@@ -116,6 +116,9 @@ void zend_optimizer_compact_vars(zend_op_array *op_array) {
 			op_array->vars = NULL;
 		}
 		op_array->last_var = num_cvs;
+		if (op_array->opcodes[0].opcode == ZEND_ENTER) {
+			op_array->opcodes[0].op2.num = num_cvs;
+		}
 	}
 
 	op_array->T = num_tmps;

@@ -3011,6 +3011,32 @@ ZEND_VM_HOT_HANDLER(42, ZEND_JMP, JMP_ADDR, ANY)
 	ZEND_VM_JMP_EX(OP_JMP_ADDR(opline, opline->op1), 0);
 }
 
+ZEND_VM_HOT_HANDLER(195, ZEND_ENTER, NUM, NUM, NUM, SPEC(TYPE_HINTS))
+{
+	USE_OPLINE
+	uint32_t num_args = EX_NUM_ARGS();
+
+	/* Initialize CV variables (skip arguments) */
+	zend_init_cvs(num_args, opline->op2.num /*EX(func)->op_array.last_var*/ EXECUTE_DATA_CC);
+
+	/* Handle arguments */
+	if (UNEXPECTED(num_args > opline->op1.num /*EX(func)->op_array.num_args*/)) {
+		zend_copy_extra_args(EXECUTE_DATA_C);
+		num_args = opline->op1.num; /*EX(func)->op_array.num_args*/
+	}
+
+	if (EXPECTED(!opline->extended_value /*(op_array->fn_flags & ZEND_ACC_HAS_TYPE_HINTS) == 0*/)) {
+		/* Skip useless ZEND_RECV and ZEND_RECV_INIT opcodes */
+		opline += num_args + 1;
+	} else {
+		opline++;
+	}
+
+	ZEND_VM_SET_OPCODE(opline);
+	ZEND_VM_INTERRUPT_CHECK();
+	ZEND_VM_CONTINUE();
+}
+
 ZEND_VM_HOT_NOCONST_HANDLER(43, ZEND_JMPZ, CONST|TMPVAR|CV, JMP_ADDR)
 {
 	USE_OPLINE

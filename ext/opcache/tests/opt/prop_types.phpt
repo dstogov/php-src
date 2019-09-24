@@ -47,13 +47,14 @@ BB0: start exit lines=[0-0]
     ; level=0
             RETURN int(1)
 
-noScope: ; (lines=10, args=1, vars=1, tmps=1, ssa_vars=5, no_loops)
+noScope: ; (lines=11, args=1, vars=1, tmps=1, ssa_vars=5, no_loops)
     ; (before dfa pass)
     ; %s
     ; return  [null] RANGE[0..0]
     ; #0.CV0($test) NOVAL [undef]
-BB0: start exit lines=[0-9]
+BB0: start exit lines=[0-10]
     ; level=0
+            ENTER 1 1 1
             #1.CV0($test) [object (instanceof Test)] = RECV 1
             INIT_FCALL 3 %d string("var_dump")
             #2.T1 [bool] = FETCH_OBJ_R #1.CV0($test) [object (instanceof Test)] string("public")
@@ -65,12 +66,13 @@ BB0: start exit lines=[0-9]
             DO_ICALL
             RETURN null
 
-Test::inTest: ; (lines=9, args=0, vars=0, tmps=1, ssa_vars=3, no_loops)
+Test::inTest: ; (lines=10, args=0, vars=0, tmps=1, ssa_vars=3, no_loops)
     ; (before dfa pass)
     ; %s
     ; return  [null] RANGE[0..0]
-BB0: start exit lines=[0-8]
+BB0: start exit lines=[0-9]
     ; level=0
+            ENTER 0 0 0
             INIT_FCALL 3 %d string("var_dump")
             #0.T0 [bool] = FETCH_OBJ_R THIS string("public")
             SEND_VAL #0.T0 [bool] 1
@@ -81,13 +83,14 @@ BB0: start exit lines=[0-8]
             DO_ICALL
             RETURN null
 
-Test::inTestWithTest2: ; (lines=10, args=1, vars=1, tmps=1, ssa_vars=5, no_loops)
+Test::inTestWithTest2: ; (lines=11, args=1, vars=1, tmps=1, ssa_vars=5, no_loops)
     ; (before dfa pass)
     ; %s
     ; return  [null] RANGE[0..0]
     ; #0.CV0($test2) NOVAL [undef]
-BB0: start exit lines=[0-9]
+BB0: start exit lines=[0-10]
     ; level=0
+            ENTER 1 1 1
             #1.CV0($test2) [object (instanceof Test2)] = RECV 1
             INIT_FCALL 3 %d string("var_dump")
             #2.T1 [bool] = FETCH_OBJ_R #1.CV0($test2) [object (instanceof Test2)] string("public")
@@ -99,12 +102,13 @@ BB0: start exit lines=[0-9]
             DO_ICALL
             RETURN null
 
-Test2::inTest2: ; (lines=9, args=0, vars=0, tmps=1, ssa_vars=3, no_loops)
+Test2::inTest2: ; (lines=10, args=0, vars=0, tmps=1, ssa_vars=3, no_loops)
     ; (before dfa pass)
     ; %s
     ; return  [null] RANGE[0..0]
-BB0: start exit lines=[0-8]
+BB0: start exit lines=[0-9]
     ; level=0
+            ENTER 0 0 0
             INIT_FCALL 3 %d string("var_dump")
             #0.T0 [bool] = FETCH_OBJ_R THIS string("public")
             SEND_VAL #0.T0 [bool] 1

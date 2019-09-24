@@ -7010,30 +7010,6 @@ static int zend_jit_init_fcall(dasm_State **Dst, const zend_op *opline, uint32_t
 	return 1;
 }
 
-static uint32_t skip_valid_arguments(zend_op_array *op_array, zend_ssa *ssa, zend_call_info *call_info)
-{
-	uint32_t num_args = 0;
-	zend_function *func = call_info->callee_func;
-
-	while (num_args < call_info->num_args) {
-		zend_arg_info *arg_info = func->op_array.arg_info + num_args;
-
-		if (ZEND_TYPE_IS_SET(arg_info->type)) {
-			if (ZEND_TYPE_IS_MASK(arg_info->type)) {
-				uint32_t type_mask = ZEND_TYPE_MASK(arg_info->type);
-				uint32_t info = _ssa_op1_info(op_array, ssa, call_info->arg_info[num_args].opline);
-				if ((info & (MAY_BE_ANY|MAY_BE_UNDEF)) & ~type_mask) {
-					break;
-				}
-			} else {
-				break;
-			}
-		}
-		num_args++;
-	}
-	return num_args;
-}
-
 static int zend_jit_do_fcall(dasm_State **Dst, const zend_op *opline, zend_op_array *op_array, zend_ssa *ssa, int call_level, unsigned int next_block)
 {
 	zend_func_info *info = ZEND_FUNC_INFO(op_array);
@@ -7159,13 +7135,6 @@ static int zend_jit_do_fcall(dasm_State **Dst, const zend_op *opline, zend_op_ar
 			|	mov aword EX:RX->return_value, 0
 		}
 
-		if (func) {
-			for (i = call_info->num_args; i < func->op_array.last_var; i++) {
-				uint32_t n = (uint32_t)(uintptr_t)ZEND_CALL_VAR_NUM(NULL, i);
-				|	SET_Z_TYPE_INFO RX + n, IS_UNDEF
-			}
-		}
-
 		//EX_LOAD_RUN_TIME_CACHE(op_array);
 		if (!func || func->op_array.cache_size) {
 			if (func && op_array == &func->op_array) {
@@ -7202,29 +7171,14 @@ static int zend_jit_do_fcall(dasm_State **Dst, const zend_op *opline, zend_op_ar
 
 		|	// opline = op_array->opcodes;
 		if (func) {
-			uint32_t num_args;
-
-			if (func->op_array.fn_flags & ZEND_ACC_HAS_TYPE_HINTS) {
-				num_args = skip_valid_arguments(op_array, ssa, call_info);
+			if (zend_accel_in_shm(func->op_array.opcodes)) {
+				|	LOAD_IP_ADDR func->op_array.opcodes
 			} else {
-				num_args = call_info->num_args;
-			}
-			if (func && zend_accel_in_shm(func->op_array.opcodes)) {
-				|	LOAD_IP_ADDR (func->op_array.opcodes + num_args)
-			} else {
-				if (func) {
-					|	mov r0, EX->func
-				}
+				|	mov r0, EX->func
 				if (GCC_GLOBAL_REGS) {
 					|	mov IP, aword [r0 + offsetof(zend_op_array, opcodes)]
-					if (num_args) {
-						|	add IP, (num_args * sizeof(zend_op))
-					}
 				} else {
 					|	mov FCARG1a, aword [r0 + offsetof(zend_op_array, opcodes)]
-					if (num_args) {
-						|	add FCARG1a, (num_args * sizeof(zend_op))
-					}
 					|	mov aword EX->opline, FCARG1a
 				}
 			}
@@ -7236,10 +7190,10 @@ static int zend_jit_do_fcall(dasm_State **Dst, const zend_op *opline, zend_op_ar
 				|.cold_code
 				|1:
 				|	pop r0
-				|	jmp =>num_args
+				|	jmp =>0
 				|.code
 #else
-				|	jmp =>num_args
+				|	jmp =>0
 #endif
 				return 1;
 			}
@@ -7251,51 +7205,6 @@ static int zend_jit_do_fcall(dasm_State **Dst, const zend_op *opline, zend_op_ar
 				|	mov FCARG1a, aword [r0 + offsetof(zend_op_array, opcodes)]
 				|	mov aword EX->opline, FCARG1a
 			}
-			|	// first_extra_arg = op_array->num_args;
-			|	mov edx, dword [r0 + offsetof(zend_op_array, num_args)]
-			|	// num_args = EX_NUM_ARGS();
-			|	mov ecx, dword [FP + offsetof(zend_execute_data, This.u2.num_args)]
-			|	// 	if (UNEXPECTED(num_args > first_extra_arg))
-			|	cmp edx, ecx
-			|	jl >1
-			|.cold_code
-			|1:
-			if (!GCC_GLOBAL_REGS) {
-				|	mov FCARG1a, FP
-			}
-			|	EXT_CALL zend_jit_copy_extra_args_helper, r0
-			|	mov r0, EX->func // reload
-			|	mov ecx, dword [FP + offsetof(zend_execute_data, This.u2.num_args)] // reload
-			|	jmp >1
-			|.code
-			|	// if (EXPECTED((op_array->fn_flags & ZEND_ACC_HAS_TYPE_HINTS) == 0))
-			|	test dword [r0 + offsetof(zend_op_array, fn_flags)], ZEND_ACC_HAS_TYPE_HINTS
-			|	jnz >1
-			|	// opline += num_args;
-			|.if X64
-				|	movsxd r2, ecx
-				|	imul r2, r2, sizeof(zend_op)
-			|.else
-				|	imul r2, ecx, sizeof(zend_op)
-			|.endif
-			|	ADD_IP r2
-			|1:
-			|	// if (EXPECTED((int)num_args < op_array->last_var)) {
-			|	mov edx, dword [r0 + offsetof(zend_op_array, last_var)]
-			|	sub edx, ecx
-			|	jle >3 //???
-			|	// zval *var = EX_VAR_NUM(num_args);
-			|.if X64
-				|	movsxd r1, ecx
-			|.endif
-			|	shl r1, 4
-			|	lea r1, [FP + r1 + (ZEND_CALL_FRAME_SLOT * sizeof(zval))]
-			|2:
-			|	SET_Z_TYPE_INFO r1, IS_UNDEF
-			|	sub edx, 1
-			|	lea r1, [r1 + 16]
-			|	jne <2
-			|3:
 		}
 
 #ifdef CONTEXT_THREADED_JIT

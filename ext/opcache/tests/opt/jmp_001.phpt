@@ -21,10 +21,11 @@ $_main: ; (lines=1, args=0, vars=0, tmps=0)
     ; %s:1-8
 L0 (8):     RETURN int(1)
 
-test: ; (lines=4, args=0, vars=1, tmps=1)
+test: ; (lines=5, args=0, vars=1, tmps=1)
     ; (after optimizer)
     ; %s:2-6
-L0 (4):     INIT_FCALL_BY_NAME 0 string("test2")
-L1 (4):     V1 = DO_FCALL_BY_NAME
-L2 (4):     CV0($var) = QM_ASSIGN V1
-L3 (5):     RETURN CV0($var)
+L0 (2):     ENTER 0 0 1
+L1 (4):     INIT_FCALL_BY_NAME 0 string("test2")
+L2 (4):     V1 = DO_FCALL_BY_NAME
+L3 (4):     CV0($var) = QM_ASSIGN V1
+L4 (5):     RETURN CV0($var)

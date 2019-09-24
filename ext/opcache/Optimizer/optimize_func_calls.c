@@ -98,9 +98,9 @@ static void zend_try_inline_call(zend_op_array *op_array, zend_op *fcall, zend_o
 		/* TODO: function copied from trait may be inconsistent ??? */
 	 && !(func->op_array.fn_flags & (ZEND_ACC_TRAIT_CLONE))
 	 && fcall->extended_value >= func->op_array.required_num_args
-	 && func->op_array.opcodes[func->op_array.num_args].opcode == ZEND_RETURN) {
+	 && func->op_array.opcodes[func->op_array.num_args + 1].opcode == ZEND_RETURN) {
 
-		zend_op *ret_opline = func->op_array.opcodes + func->op_array.num_args;
+		zend_op *ret_opline = func->op_array.opcodes + func->op_array.num_args + 1;
 
 		if (ret_opline->op1_type == IS_CONST) {
 			uint32_t i, num_args = func->op_array.num_args;
@@ -123,7 +123,7 @@ static void zend_try_inline_call(zend_op_array *op_array, zend_op *fcall, zend_o
 
 			if (fcall->extended_value < func->op_array.num_args) {
 				/* don't inline functions with named constants in default arguments */
-				i = fcall->extended_value;
+				i = fcall->extended_value + 1;
 
 				do {
 					if (Z_TYPE_P(RT_CONSTANT(&func->op_array.opcodes[i], func->op_array.opcodes[i].op2)) == IS_CONSTANT_AST) {

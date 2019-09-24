@@ -24,15 +24,16 @@ $_main: ; (lines=1, args=0, vars=0, tmps=0)
     ; %s:1-10
 L0 (10):    RETURN int(1)
 
-test: ; (lines=9, args=1, vars=2, tmps=1)
+test: ; (lines=10, args=1, vars=2, tmps=1)
     ; (after optimizer)
     ; %s:2-8
-L0 (2):     CV0($var) = RECV 1
-L1 (3):     T2 = TYPE_CHECK (string) CV0($var)
-L2 (3):     JMPZ T2 L4
-L3 (3):     JMP L5
-L4 (4):     RETURN null
-L5 (7):     INIT_FCALL 1 %d string("var_dump")
-L6 (7):     SEND_VAR CV1($username) 1
-L7 (7):     DO_ICALL
-L8 (8):     RETURN null
+L0 (2):     ENTER 0 1 2
+L1 (2):     CV0($var) = RECV 1
+L2 (3):     T2 = TYPE_CHECK (string) CV0($var)
+L3 (3):     JMPZ T2 L5
+L4 (3):     JMP L6
+L5 (4):     RETURN null
+L6 (7):     INIT_FCALL 1 %d string("var_dump")
+L7 (7):     SEND_VAR CV1($username) 1
+L8 (7):     DO_ICALL
+L9 (8):     RETURN null

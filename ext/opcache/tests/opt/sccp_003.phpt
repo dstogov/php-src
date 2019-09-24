@@ -28,9 +28,10 @@ $_main: ; (lines=1, args=0, vars=0, tmps=0)
     ; %ssccp_003.php:1-14
 L0 (14):    RETURN int(1)
 
-foo: ; (lines=3, args=0, vars=0, tmps=0)
+foo: ; (lines=4, args=0, vars=0, tmps=0)
     ; (after optimizer)
     ; %ssccp_003.php:2-12
-L0 (9):     ECHO int(1)
-L1 (11):    ECHO int(1)
-L2 (12):    RETURN null
+L0 (2):     ENTER 0 0 0
+L1 (9):     ECHO int(1)
+L2 (11):    ECHO int(1)
+L3 (12):    RETURN null

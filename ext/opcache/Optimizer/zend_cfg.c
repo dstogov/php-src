@@ -59,12 +59,6 @@ static void zend_mark_reachable(zend_op *opcodes, zend_cfg *cfg, zend_basic_bloc
 								succ->flags |= ZEND_BB_ENTRY;
 							}
 						}
-						if ((cfg->flags & ZEND_CFG_RECV_ENTRY)) {
-							if (opcode == ZEND_RECV ||
-								opcode == ZEND_RECV_INIT) {
-								succ->flags |= ZEND_BB_RECV_ENTRY;
-							}
-						}
 					}
 				} else if (b->successors_count == 2) {
 					if (i == 0 || opcode == ZEND_JMPZNZ) {
@@ -279,7 +273,7 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 	zval *zv;
 	zend_bool extra_entry_block = 0;
 
-	cfg->flags = build_flags & (ZEND_CFG_STACKLESS|ZEND_CFG_RECV_ENTRY);
+	cfg->flags = build_flags & ZEND_CFG_STACKLESS;
 
 	cfg->map = block_map = zend_arena_calloc(arena, op_array->last, sizeof(uint32_t));
 
@@ -288,12 +282,6 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 	for (i = 0; i < op_array->last; i++) {
 		zend_op *opline = op_array->opcodes + i;
 		switch (opline->opcode) {
-			case ZEND_RECV:
-			case ZEND_RECV_INIT:
-				if (build_flags & ZEND_CFG_RECV_ENTRY) {
-					BB_START(i + 1);
-				}
-				break;
 			case ZEND_RETURN:
 			case ZEND_RETURN_BY_REF:
 			case ZEND_GENERATOR_RETURN:

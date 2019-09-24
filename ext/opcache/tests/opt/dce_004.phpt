@@ -22,10 +22,11 @@ $_main: ; (lines=1, args=0, vars=0, tmps=0)
     ; %sdce_004.php:1-8
 L0 (8):     RETURN int(1)
 
-foo: ; (lines=4, args=2, vars=3, tmps=0)
+foo: ; (lines=5, args=2, vars=3, tmps=0)
     ; (after optimizer)
     ; %sdce_004.php:2-7
-L0 (2):     CV0($x) = RECV 1
-L1 (2):     CV1($y) = RECV 2
-L2 (5):     CV2($a) = QM_ASSIGN CV1($y)
-L3 (6):     RETURN CV2($a)
+L0 (2):     ENTER 1 2 3
+L1 (2):     CV0($x) = RECV 1
+L2 (2):     CV1($y) = RECV 2
+L3 (5):     CV2($a) = QM_ASSIGN CV1($y)
+L4 (6):     RETURN CV2($a)
