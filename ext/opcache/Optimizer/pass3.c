@@ -94,7 +94,7 @@ void zend_optimizer_pass3(zend_op_array *op_array, zend_optimizer_ctx *ctx)
 					 * works on it. Only do this if we are ignoring operator overloading,
 					 * as operand order might be significant otherwise. */
 					if ((ctx->optimization_level & ZEND_OPTIMIZER_IGNORE_OVERLOADING)
-						&& (opline->op2_type & (IS_VAR | IS_CV))
+						&& (opline->op2_type & _IS_CV_OR_VAR)
 						&& opline->op2.var == next_opline->op1.var &&
 						(opline->opcode == ZEND_ADD ||
 						 opline->opcode == ZEND_MUL ||
@@ -114,7 +114,7 @@ void zend_optimizer_pass3(zend_op_array *op_array, zend_optimizer_ctx *ctx)
 					}
 
 					if (ZEND_IS_BINARY_ASSIGN_OP_OPCODE(opline->opcode)
-					    && (opline->op1_type & (IS_VAR | IS_CV))
+					    && (opline->op1_type & _IS_CV_OR_VAR)
 						&& opline->op1.var == next_opline->op1.var
 						&& opline->op1_type == next_opline->op1_type) {
 						opline->extended_value = opline->opcode;

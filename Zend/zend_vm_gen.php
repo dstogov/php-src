@@ -146,11 +146,11 @@ $vm_kind_name = array(
 
 $op_types = array(
 	"ANY",
-	"CONST",
+	"UNUSED",
+	"CV",
 	"TMP",
 	"VAR",
-	"UNUSED",
-	"CV"
+	"CONST"
 );
 
 $op_types_ex = array(
@@ -193,8 +193,8 @@ $op1_type = array(
 	"CONST"    => "IS_CONST",
 	"UNUSED"   => "IS_UNUSED",
 	"CV"       => "IS_CV",
-	"TMPVAR"   => "(IS_TMP_VAR|IS_VAR)",
-	"TMPVARCV" => "(IS_TMP_VAR|IS_VAR|IS_CV)",
+	"TMPVAR"   => "_IS_TMP_OR_VAR",
+	"TMPVARCV" => "_IS_TMP_CV_OR_VAR",
 );
 
 $op2_type = array(
@@ -204,8 +204,8 @@ $op2_type = array(
 	"CONST"    => "IS_CONST",
 	"UNUSED"   => "IS_UNUSED",
 	"CV"       => "IS_CV",
-	"TMPVAR"   => "(IS_TMP_VAR|IS_VAR)",
-	"TMPVARCV" => "(IS_TMP_VAR|IS_VAR|IS_CV)",
+	"TMPVAR"   => "_IS_TMP_OR_VAR",
+	"TMPVARCV" => "_IS_TMP_CV_OR_VAR",
 );
 
 $op1_get_zval_ptr = array(
@@ -523,8 +523,8 @@ $op_data_type = array(
 	"CONST"    => "IS_CONST",
 	"UNUSED"   => "IS_UNUSED",
 	"CV"       => "IS_CV",
-	"TMPVAR"   => "(IS_TMP_VAR|IS_VAR)",
-	"TMPVARCV" => "(IS_TMP_VAR|IS_VAR|IS_CV)",
+	"TMPVAR"   => "_IS_TMP_OR_VAR",
+	"TMPVARCV" => "_IS_TMP_CV_OR_VAR",
 );
 
 $op_data_get_zval_ptr = array(
@@ -2699,20 +2699,9 @@ function gen_vm($def, $skel) {
 	if (!ZEND_VM_SPEC) {
 		out($f, "\treturn zend_opcode_handlers[spec];\n");
 	} else {
-		out($f, "\tstatic const int zend_vm_decode[] = {\n");
-		out($f, "\t\t_UNUSED_CODE, /* 0 = IS_UNUSED  */\n");
-		out($f, "\t\t_CONST_CODE,  /* 1 = IS_CONST   */\n");
-		out($f, "\t\t_TMP_CODE,    /* 2 = IS_TMP_VAR */\n");
-		out($f, "\t\t_UNUSED_CODE, /* 3              */\n");
-		out($f, "\t\t_VAR_CODE,    /* 4 = IS_VAR     */\n");
-		out($f, "\t\t_UNUSED_CODE, /* 5              */\n");
-		out($f, "\t\t_UNUSED_CODE, /* 6              */\n");
-		out($f, "\t\t_UNUSED_CODE, /* 7              */\n");
-		out($f, "\t\t_CV_CODE      /* 8 = IS_CV      */\n");
-		out($f, "\t};\n");
 		out($f, "\tuint32_t offset = 0;\n");
-		out($f, "\tif (spec & SPEC_RULE_OP1) offset = offset * 5 + zend_vm_decode[op->op1_type];\n");
-		out($f, "\tif (spec & SPEC_RULE_OP2) offset = offset * 5 + zend_vm_decode[op->op2_type];\n");
+		out($f, "\tif (spec & SPEC_RULE_OP1) offset = offset * 5 + op->op1_type;\n");
+		out($f, "\tif (spec & SPEC_RULE_OP2) offset = offset * 5 + op->op2_type;\n");
 
 		if (isset($used_extra_spec["OP_DATA"]) ||
 		    isset($used_extra_spec["RETVAL"]) ||
@@ -2735,7 +2724,7 @@ function gen_vm($def, $skel) {
 			}
 			if (isset($used_extra_spec["OP_DATA"])) {
 				out($f, "\t\t{$else}if (spec & SPEC_RULE_OP_DATA) {\n");
-				out($f, "\t\t\toffset = offset * 5 + zend_vm_decode[(op + 1)->op1_type];\n");
+				out($f, "\t\t\toffset = offset * 5 + (op + 1)->op1_type;\n");
 				$else = "} else ";
 			}
 			if (isset($used_extra_spec["ISSET"])) {
@@ -2781,20 +2770,9 @@ function gen_vm($def, $skel) {
 		if (!ZEND_VM_SPEC) {
 			out($f, "\treturn zend_opcode_handler_funcs[spec];\n");
 		} else {
-			out($f, "\tstatic const int zend_vm_decode[] = {\n");
-			out($f, "\t\t_UNUSED_CODE, /* 0 = IS_UNUSED  */\n");
-			out($f, "\t\t_CONST_CODE,  /* 1 = IS_CONST   */\n");
-			out($f, "\t\t_TMP_CODE,    /* 2 = IS_TMP_VAR */\n");
-			out($f, "\t\t_UNUSED_CODE, /* 3              */\n");
-			out($f, "\t\t_VAR_CODE,    /* 4 = IS_VAR     */\n");
-			out($f, "\t\t_UNUSED_CODE, /* 5              */\n");
-			out($f, "\t\t_UNUSED_CODE, /* 6              */\n");
-			out($f, "\t\t_UNUSED_CODE, /* 7              */\n");
-			out($f, "\t\t_CV_CODE      /* 8 = IS_CV      */\n");
-			out($f, "\t};\n");
 			out($f, "\tuint32_t offset = 0;\n");
-			out($f, "\tif (spec & SPEC_RULE_OP1) offset = offset * 5 + zend_vm_decode[op->op1_type];\n");
-			out($f, "\tif (spec & SPEC_RULE_OP2) offset = offset * 5 + zend_vm_decode[op->op2_type];\n");
+			out($f, "\tif (spec & SPEC_RULE_OP1) offset = offset * 5 + op->op1_type;\n");
+			out($f, "\tif (spec & SPEC_RULE_OP2) offset = offset * 5 + op->op2_type;\n");
 
 			if (isset($used_extra_spec["OP_DATA"]) ||
 			    isset($used_extra_spec["RETVAL"]) ||
@@ -2806,7 +2784,7 @@ function gen_vm($def, $skel) {
 				out($f, "\tif (spec & SPEC_EXTRA_MASK) {\n");
 
 				if (isset($used_extra_spec["OP_DATA"])) {
-					out($f, "\t\t{$else}if (spec & SPEC_RULE_OP_DATA) offset = offset * 5 + zend_vm_decode[(op + 1)->op1_type];\n");
+					out($f, "\t\t{$else}if (spec & SPEC_RULE_OP_DATA) offset = offset * 5 + (op + 1)->op1_type;\n");
 					$else = "else ";
 				}
 				if (isset($used_extra_spec["RETVAL"])) {
@@ -2850,7 +2828,7 @@ function gen_vm($def, $skel) {
 	} else {
 		out($f, "\n");
 		out($f, "\tif (zend_spec_handlers[op->opcode] & SPEC_RULE_COMMUTATIVE) {\n");
-		out($f, "\t\tif (op->op1_type < op->op2_type) {\n");
+		out($f, "\t\tif (op->op1_type > op->op2_type) {\n");
 		out($f, "\t\t\tzend_swap_operands(op);\n");
 		out($f, "\t\t}\n");
 		out($f, "\t}\n");
@@ -2873,7 +2851,7 @@ function gen_vm($def, $skel) {
 					$orig_op = $dsc['op'];
 					out($f, "\t\tcase $orig_op:\n");
 					if (isset($dsc["spec"]["COMMUTATIVE"])) {
-						out($f, "\t\t\tif (op->op1_type < op->op2_type) {\n");
+						out($f, "\t\t\tif (op->op1_type > op->op2_type) {\n");
 						out($f, "\t\t\t\tzend_swap_operands(op);\n");
 						out($f, "\t\t\t}\n");
 					}
@@ -2894,7 +2872,7 @@ function gen_vm($def, $skel) {
 						}
 						out($f, "\t\t\t\tspec = ${spec_dsc['spec_code']};\n");
 						if (isset($spec_dsc["spec"]["COMMUTATIVE"]) && !isset($dsc["spec"]["COMMUTATIVE"])) {
-							out($f, "\t\t\t\tif (op->op1_type < op->op2_type) {\n");
+							out($f, "\t\t\t\tif (op->op1_type > op->op2_type) {\n");
 							out($f, "\t\t\t\t\tzend_swap_operands(op);\n");
 							out($f, "\t\t\t\t}\n");
 						}
@@ -2916,13 +2894,13 @@ function gen_vm($def, $skel) {
 				}
 			}
 			if ($has_commutative) {
-				out($f, "\t\t\tif (op->op1_type < op->op2_type) {\n");
+				out($f, "\t\t\tif (op->op1_type > op->op2_type) {\n");
 				out($f, "\t\t\t\tzend_swap_operands(op);\n");
 				out($f, "\t\t\t}\n");
 				out($f, "\t\t\tbreak;\n");
 				out($f, "\t\tcase ZEND_USER_OPCODE:\n");
 				out($f, "\t\t\tif (zend_spec_handlers[op->opcode] & SPEC_RULE_COMMUTATIVE) {\n");
-				out($f, "\t\t\t\tif (op->op1_type < op->op2_type) {\n");
+				out($f, "\t\t\t\tif (op->op1_type > op->op2_type) {\n");
 				out($f, "\t\t\t\t\tzend_swap_operands(op);\n");
 				out($f, "\t\t\t\t}\n");
 				out($f, "\t\t\t}\n");

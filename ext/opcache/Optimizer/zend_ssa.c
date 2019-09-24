@@ -557,19 +557,19 @@ static int zend_ssa_rename(const zend_op_array *op_array, uint32_t build_flags, 
 				if (next->op1_type == IS_CV) {
 					ssa_ops[k + 1].op1_use = var[EX_VAR_TO_NUM(next->op1.var)];
 					//USE_SSA_VAR(next->op1.var);
-				} else if (next->op1_type & (IS_VAR|IS_TMP_VAR)) {
+				} else if (next->op1_type & _IS_TMP_OR_VAR) {
 					ssa_ops[k + 1].op1_use = var[EX_VAR_TO_NUM(next->op1.var)];
 					//USE_SSA_VAR(op_array->last_var + next->op1.var);
 				}
 				if (next->op2_type == IS_CV) {
 					ssa_ops[k + 1].op2_use = var[EX_VAR_TO_NUM(next->op2.var)];
 					//USE_SSA_VAR(next->op2.var);
-				} else if (next->op2_type & (IS_VAR|IS_TMP_VAR)) {
+				} else if (next->op2_type & _IS_TMP_OR_VAR) {
 					ssa_ops[k + 1].op2_use = var[EX_VAR_TO_NUM(next->op2.var)];
 					//USE_SSA_VAR(op_array->last_var + next->op2.var);
 				}
 			}
-			if (opline->op1_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+			if (opline->op1_type & _IS_TMP_CV_OR_VAR) {
 				ssa_ops[k].op1_use = var[EX_VAR_TO_NUM(opline->op1.var)];
 				//USE_SSA_VAR(op_array->last_var + opline->op1.var)
 			}
@@ -581,7 +581,7 @@ static int zend_ssa_rename(const zend_op_array *op_array, uint32_t build_flags, 
 				var[EX_VAR_TO_NUM(opline->op2.var)] = ssa_vars_count;
 				ssa_vars_count++;
 				//NEW_SSA_VAR(opline->op2.var)
-			} else if (opline->op2_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+			} else if (opline->op2_type & _IS_TMP_CV_OR_VAR) {
 				ssa_ops[k].op2_use = var[EX_VAR_TO_NUM(opline->op2.var)];
 				//USE_SSA_VAR(op_array->last_var + opline->op2.var)
 			}
@@ -771,7 +771,7 @@ static int zend_ssa_rename(const zend_op_array *op_array, uint32_t build_flags, 
 					}
 					break;
 				case ZEND_VERIFY_RETURN_TYPE:
-					if (opline->op1_type & (IS_TMP_VAR|IS_VAR|IS_CV)) {
+					if (opline->op1_type & _IS_TMP_CV_OR_VAR) {
 						ssa_ops[k].op1_def = ssa_vars_count;
 						var[EX_VAR_TO_NUM(opline->op1.var)] = ssa_vars_count;
 						ssa_vars_count++;
@@ -790,7 +790,7 @@ static int zend_ssa_rename(const zend_op_array *op_array, uint32_t build_flags, 
 				var[EX_VAR_TO_NUM(opline->result.var)] = ssa_vars_count;
 				ssa_vars_count++;
 				//NEW_SSA_VAR(opline->result.var)
-			} else if (opline->result_type & (IS_VAR|IS_TMP_VAR)) {
+			} else if (opline->result_type & _IS_TMP_OR_VAR) {
 				ssa_ops[k].result_def = ssa_vars_count;
 				var[EX_VAR_TO_NUM(opline->result.var)] = ssa_vars_count;
 				ssa_vars_count++;

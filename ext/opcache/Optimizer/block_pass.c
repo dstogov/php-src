@@ -79,7 +79,7 @@ static void strip_leading_nops(zend_op_array *op_array, zend_basic_block *b)
 		if (b->len == 2
 		 && (opcodes[b->start + 1].opcode == ZEND_JMPZ
 		  || opcodes[b->start + 1].opcode == ZEND_JMPNZ)
-		 && (opcodes[b->start + 1].op1_type & (IS_CV|IS_CONST))
+		 && !(opcodes[b->start + 1].op1_type & _IS_TMP_OR_VAR)
 		 && b->start > 0
 		 && zend_is_smart_branch(opcodes + b->start - 1)) {
 			break;
@@ -117,7 +117,7 @@ static void strip_nops(zend_op_array *op_array, zend_basic_block *b)
 		if (i + 1 < b->start + b->len
 		 && (op_array->opcodes[i+1].opcode == ZEND_JMPZ
 		  || op_array->opcodes[i+1].opcode == ZEND_JMPNZ)
-		 && op_array->opcodes[i+1].op1_type & (IS_CV|IS_CONST)
+		 && !(op_array->opcodes[i+1].op1_type & _IS_TMP_OR_VAR)
 		 && zend_is_smart_branch(op_array->opcodes + j - 1)) {
 			/* don't remove NOP, that splits incorrect smart branch */
 			j++;
@@ -268,7 +268,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 		}
 
 		if (opline->opcode == ZEND_ECHO) {
-			if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+			if (opline->op1_type & _IS_TMP_OR_VAR) {
 				src = VAR_SOURCE(opline->op1);
 				if (src &&
 				    src->opcode == ZEND_CAST &&
@@ -360,7 +360,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 		   extension_loaded(x)
 		   BAD: interacts badly with Accelerator
 		*/
-		if((opline->op1_type & IS_VAR) &&
+		if((opline->op1_type == IS_VAR) &&
 		   VAR_SOURCE(opline->op1) && VAR_SOURCE(opline->op1)->opcode == ZEND_DO_CF_FCALL &&
 		   VAR_SOURCE(opline->op1)->extended_value == 1) {
 			zend_op *fcall = VAR_SOURCE(opline->op1);
@@ -408,7 +408,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 
 			case ZEND_FETCH_LIST_R:
 			case ZEND_FETCH_LIST_W:
-				if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+				if (opline->op1_type & _IS_TMP_OR_VAR) {
 					/* LIST variable will be deleted later by FREE */
 					Tsource[VAR_NUM(opline->op1.var)] = NULL;
 				}
@@ -416,7 +416,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 
 			case ZEND_SWITCH_LONG:
 			case ZEND_SWITCH_STRING:
-				if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+				if (opline->op1_type & _IS_TMP_OR_VAR) {
 					/* SWITCH variable will be deleted later by FREE, so we can't optimize it */
 					Tsource[VAR_NUM(opline->op1.var)] = NULL;
 					break;
@@ -435,7 +435,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 
 			case ZEND_CASE:
 			case ZEND_COPY_TMP:
-				if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+				if (opline->op1_type & _IS_TMP_OR_VAR) {
 					/* Variable will be deleted later by FREE, so we can't optimize it */
 					Tsource[VAR_NUM(opline->op1.var)] = NULL;
 					break;
@@ -704,7 +704,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 					}
 				}
 
-				if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+				if (opline->op1_type & _IS_TMP_OR_VAR) {
 					src = VAR_SOURCE(opline->op1);
 					if (src &&
 					    src->opcode == ZEND_CAST &&
@@ -717,7 +717,7 @@ static void zend_optimize_block(zend_basic_block *block, zend_op_array *op_array
 						++(*opt_count);
 					}
 	            }
-				if (opline->op2_type & (IS_TMP_VAR|IS_VAR)) {
+				if (opline->op2_type & _IS_TMP_OR_VAR) {
 					src = VAR_SOURCE(opline->op2);
 					if (src &&
 					    src->opcode == ZEND_CAST &&
@@ -888,7 +888,7 @@ optimize_const_unary_op:
 		}
 
 		/* get variable source */
-		if (opline->result_type & (IS_VAR|IS_TMP_VAR)) {
+		if (opline->result_type & _IS_TMP_OR_VAR) {
 			SET_VAR_SOURCE(opline);
 		}
 		opline++;
@@ -1238,7 +1238,7 @@ static void zend_jmp_optimization(zend_basic_block *block, zend_op_array *op_arr
 				if (last_op->op1_type == IS_CV) {
 					last_op->opcode = ZEND_CHECK_VAR;
 					last_op->op2.num = 0;
-				} else if (last_op->op1_type & (IS_VAR|IS_TMP_VAR)) {
+				} else if (last_op->op1_type & _IS_TMP_OR_VAR) {
 					last_op->opcode = ZEND_FREE;
 					last_op->op2.num = 0;
 				} else {
@@ -1270,7 +1270,7 @@ next_target:
 					goto next_target;
 				} else if (target->opcode == INV_COND(last_op->opcode) &&
 					/* JMPZ(X, L), L: JMPNZ(X, L2) -> JMPZ(X, L+1) */
-				   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+				   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 				   same_type == target->op1_type &&
 				   same_var == VAR_NUM_EX(target->op1) &&
 				   !(target_block->flags & ZEND_BB_PROTECTED)
@@ -1280,7 +1280,7 @@ next_target:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == INV_COND_EX(last_op->opcode) &&
-							(target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+							(target->op1_type & _IS_TMP_CV_OR_VAR) &&
 				    		same_type == target->op1_type &&
 				    		same_var == VAR_NUM_EX(target->op1) &&
 							!(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1292,7 +1292,7 @@ next_target:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == last_op->opcode &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   same_type == target->op1_type &&
 						   same_var == VAR_NUM_EX(target->op1) &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1309,7 +1309,7 @@ next_target:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == ZEND_JMPZNZ &&
-				           (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+				           (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 				           same_type == target->op1_type &&
 				           same_var == VAR_NUM_EX(target->op1) &&
 				           !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1413,7 +1413,7 @@ next_target_ex:
 					++(*opt_count);
 					goto next_target_ex;
 				} else if (target->opcode == last_op->opcode-3 &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   (same_t[VAR_NUM_EX(target->op1)] & target->op1_type) != 0 &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
 					/* T = JMPZ_EX(X, L1), L1: JMPZ({X|T}, L2) -> T = JMPZ_EX(X, L2) */
@@ -1422,7 +1422,7 @@ next_target_ex:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == INV_EX_COND(last_op->opcode) &&
-					   	   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+					   	   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   (same_t[VAR_NUM_EX(target->op1)] & target->op1_type) != 0 &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
 					/* T = JMPZ_EX(X, L1), L1: JMPNZ({X|T1}, L2) -> T = JMPZ_EX(X, L1+1) */
@@ -1431,7 +1431,7 @@ next_target_ex:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == INV_EX_COND_EX(last_op->opcode) &&
-					       (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+					       (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   (same_t[VAR_NUM_EX(target->op1)] & target->op1_type) != 0 &&
 						   (same_t[VAR_NUM_EX(target->result)] & target->result_type) != 0 &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1441,7 +1441,7 @@ next_target_ex:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == last_op->opcode &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   (same_t[VAR_NUM_EX(target->op1)] & target->op1_type) != 0 &&
 						   (same_t[VAR_NUM_EX(target->result)] & target->result_type) != 0 &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1458,7 +1458,7 @@ next_target_ex:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == ZEND_JMPZNZ &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   (same_t[VAR_NUM_EX(target->op1)] & target->op1_type) != 0 &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
 					/* T = JMPZ_EX(X, L), L: JMPZNZ({X|T}, L2, L3) -> T = JMPZ_EX(X, L2) */
@@ -1504,7 +1504,7 @@ next_target_ex:
 				++(*opt_count);
 			} else if (block->successors[0] == block->successors[1]) {
 				/* both goto the same one - it's JMP */
-				if (!(last_op->op1_type & (IS_VAR|IS_TMP_VAR))) {
+				if (!(last_op->op1_type & _IS_TMP_OR_VAR)) {
 					/* JMPZNZ(?,L,L) -> JMP(L) */
 					last_op->opcode = ZEND_JMP;
 					SET_UNUSED(last_op->op1);
@@ -1547,7 +1547,7 @@ next_target_znz:
 					++(*opt_count);
 					goto next_target_znz;
 				} else if ((target->opcode == ZEND_JMPZ || target->opcode == ZEND_JMPZNZ) &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   same_type == target->op1_type &&
 						   same_var == VAR_NUM_EX(target->op1) &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1557,7 +1557,7 @@ next_target_znz:
 					ADD_SOURCE(block, block->successors[0]);
 					++(*opt_count);
 				} else if (target->opcode == ZEND_JMPNZ &&
-						   (target->op1_type & (IS_TMP_VAR|IS_CV)) &&
+						   (target->op1_type & _IS_TMP_CV_OR_VAR) &&
 						   same_type == target->op1_type &&
 						   same_var == VAR_NUM_EX(target->op1) &&
 						   !(target_block->flags & ZEND_BB_PROTECTED)) {
@@ -1622,7 +1622,7 @@ static void zend_t_usage(zend_cfg *cfg, zend_op_array *op_array, zend_bitset use
 		}
 
 		while (opline<end) {
-			if (opline->op1_type & (IS_VAR|IS_TMP_VAR)) {
+			if (opline->op1_type & _IS_TMP_OR_VAR) {
 				var_num = VAR_NUM(opline->op1.var);
 				if (!zend_bitset_in(defined_here, var_num)) {
 					zend_bitset_incl(used_ext, var_num);
@@ -1745,7 +1745,7 @@ static void zend_t_usage(zend_cfg *cfg, zend_op_array *op_array, zend_bitset use
 							if (opline->op1_type == IS_CV) {
 								opline->opcode = ZEND_CHECK_VAR;
 								SET_UNUSED(opline->result);
-							} else if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+							} else if (opline->op1_type & _IS_TMP_OR_VAR) {
 								opline->opcode = ZEND_FREE;
 								SET_UNUSED(opline->result);
 							} else {
@@ -1793,7 +1793,7 @@ static void zend_t_usage(zend_cfg *cfg, zend_op_array *op_array, zend_bitset use
 				zend_bitset_incl(usage, VAR_NUM(opline->op2.var));
 			}
 
-			if (opline->op1_type & (IS_VAR|IS_TMP_VAR)) {
+			if (opline->op1_type & _IS_TMP_OR_VAR) {
 				zend_bitset_incl(usage, VAR_NUM(opline->op1.var));
 			}
 

@@ -186,7 +186,7 @@ void zend_optimizer_pass2(zend_op_array *op_array)
 						if (opline->op1_type == IS_CV) {
 							opline->opcode = ZEND_CHECK_VAR;
 							opline->op2.num = 0;
-						} else if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+						} else if (opline->op1_type & _IS_TMP_OR_VAR) {
 							opline->opcode = ZEND_FREE;
 							opline->op2.num = 0;
 						} else {

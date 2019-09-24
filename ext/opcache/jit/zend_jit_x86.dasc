@@ -1351,7 +1351,7 @@ static void* dasm_labels[zend_lb_MAX];
 |.endmacro
 
 |.macro FREE_OP, op_type, op, op_info, cold, op_array, opline
-||	if (op_type & (IS_VAR|IS_TMP_VAR)) {
+||	if (op_type & _IS_TMP_OR_VAR) {
 |		ZVAL_PTR_DTOR ZEND_ADDR_MEM_ZVAL(ZREG_FP, op.var), op_info, 0, cold, 0, opline
 ||	}
 |.endmacro
@@ -1790,8 +1790,8 @@ static int zend_jit_throw_cannot_pass_by_ref_stub(dasm_State **Dst)
 		|	EXT_CALL zend_throw_error, r0
 		|	add r4, 16
 	|.endif
-	|	cmp byte OP:RX->op1_type, IS_TMP_VAR
-	|	jne >9
+	|	test byte [RX+offsetof(zend_op,opcode)+1], _IS_TMP_OR_VAR
+	|	je >9
 	|.if X64
 		|	movsxd r0, dword OP:RX->op1.var
 	|.else
@@ -1830,9 +1830,9 @@ static int zend_jit_undefined_offset_stub(dasm_State **Dst)
 	|.else
 		|	mov r1, OP:r0->result.var
 	|.endif
-	|	cmp byte OP:r0->op2_type, IS_CONST
+	|	test byte [r0+offsetof(zend_op,opcode)+1], (IS_CONST << 3)
 	|	SET_Z_TYPE_INFO FP + r1, IS_NULL
-	|	jne >2
+	|	je >2
 	|.if X64
 		|	movsxd r1, dword OP:r0->op2.constant
 		|	add r0, r1
@@ -1898,9 +1898,9 @@ static int zend_jit_undefined_index_stub(dasm_State **Dst)
 	|.else
 		|	mov r1, OP:r0->result.var
 	|.endif
-	|	cmp byte OP:r0->op2_type, IS_CONST
+	|	test byte [r0+offsetof(zend_op,opcode)+1], (IS_CONST << 3)
 	|	SET_Z_TYPE_INFO FP + r1, IS_NULL
-	|	jne >2
+	|	je >2
 	|.if X64
 		|	movsxd r1, dword OP:r0->op2.constant
 		|   add r0, r1
@@ -1965,7 +1965,7 @@ static int zend_jit_cannot_add_element_stub(dasm_State **Dst)
 		|	sub r4, 12
 	|.endif
 	|	mov r0, EX->opline
-	|	cmp byte OP:r0->result_type, IS_UNUSED
+	|	test byte [r0+offsetof(zend_op,opcode)+1], 0xc0
 	|	jz >1
 	|.if X64
 		|	movsxd r0, dword OP:r0->result.var
@@ -2525,7 +2525,7 @@ static int zend_jit_check_exception(dasm_State **Dst)
 
 static int zend_jit_check_exception_undef_result(dasm_State **Dst, const zend_op *opline)
 {
-	if (opline->result_type & (IS_TMP_VAR|IS_VAR)) {
+	if (opline->result_type & _IS_TMP_OR_VAR) {
 		|	MEM_OP2_1_ZTS cmp, aword, executor_globals, exception, 0, r0
 		|	mov r0, opline->result.var
 		|	jne ->exception_handler_undef
@@ -4756,7 +4756,7 @@ static int zend_jit_assign_dim(dasm_State **Dst, const zend_op *opline, zend_op_
 			|.endif
 
 #ifdef ZEND_JIT_USE_RC_INFERENCE
-			if (((opline+1)->op1_type & (IS_TMP_VAR|IS_VAR)) && (val_info & MAY_BE_RC1)) {
+			if (((opline+1)->op1_type & _IS_TMP_OR_VAR) && (val_info & MAY_BE_RC1)) {
 				/* ASSIGN_DIM may increase refcount of the value */
 				val_info |= MAY_BE_RCN;
 			}
@@ -4774,7 +4774,7 @@ static int zend_jit_assign_dim(dasm_State **Dst, const zend_op *opline, zend_op_
 	}
 
 #ifdef ZEND_JIT_USE_RC_INFERENCE
-	if ((opline->op2_type & (IS_TMP_VAR|IS_VAR)) && (op1_info & (MAY_BE_UNDEF|MAY_BE_NULL|MAY_BE_FALSE|MAY_BE_ARRAY|MAY_BE_OBJECT))) {
+	if ((opline->op2_type & _IS_TMP_OR_VAR) && (op1_info & (MAY_BE_UNDEF|MAY_BE_NULL|MAY_BE_FALSE|MAY_BE_ARRAY|MAY_BE_OBJECT))) {
 		/* ASSIGN_DIM may increase refcount of the key */
 		op2_info |= MAY_BE_RCN;
 	}
@@ -6104,17 +6104,17 @@ static int zend_jit_identical(dasm_State **Dst, const zend_op *opline, int b, in
 			|	LOAD_ZVAL_ADDR FCARG2a, op2_addr
 		}
 	}
-	if (opline->op1_type & (IS_CV|IS_VAR)) {
+	if (opline->op1_type & _IS_CV_OR_VAR) {
 		|	ZVAL_DEREF FCARG1a, op1_info
 	}
-	if (opline->op2_type & (IS_CV|IS_VAR)) {
+	if (opline->op2_type & _IS_CV_OR_VAR) {
 		|	ZVAL_DEREF FCARG2a, op2_info
 	}
 
 	if ((op1_info & op2_info & MAY_BE_ANY) == 0) {
-		if (((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+		if (((opline->op1_type & _IS_TMP_OR_VAR) &&
 		     (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF))) ||
-		    ((opline->op2_type & (IS_VAR|IS_TMP_VAR)) &&
+		    ((opline->op2_type & _IS_TMP_OR_VAR) &&
 		     (op2_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF)))) {
 			|	SAVE_VALID_OPLINE opline
 			|	FREE_OP opline->op1_type, opline->op1, op1_info, 1, op_array, opline
@@ -6189,7 +6189,7 @@ static int zend_jit_identical(dasm_State **Dst, const zend_op *opline, int b, in
 			|	lea eax, [eax + 2]
 			|	SET_ZVAL_TYPE_INFO res_addr, eax
 		}
-		if ((opline->op2_type & (IS_VAR|IS_TMP_VAR)) &&
+		if ((opline->op2_type & _IS_TMP_OR_VAR) &&
 		    (op2_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF))) {
 			|	SAVE_VALID_OPLINE opline
 			|	FREE_OP opline->op2_type, opline->op2, op2_info, 1, op_array, opline
@@ -6229,7 +6229,7 @@ static int zend_jit_identical(dasm_State **Dst, const zend_op *opline, int b, in
 			|	lea eax, [eax + 2]
 			|	SET_ZVAL_TYPE_INFO res_addr, eax
 		}
-		if ((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+		if ((opline->op1_type & _IS_TMP_OR_VAR) &&
 		    (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF))) {
 			|	SAVE_VALID_OPLINE opline
 			|	FREE_OP opline->op1_type, opline->op1, op1_info, 1, op_array, opline
@@ -6256,9 +6256,9 @@ static int zend_jit_identical(dasm_State **Dst, const zend_op *opline, int b, in
 			|	LOAD_ZVAL_ADDR FCARG2a, op2_addr
 		}
 		|	EXT_CALL zend_is_identical, r0
-			if (((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+			if (((opline->op1_type & _IS_TMP_OR_VAR) &&
 			     (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF))) ||
-			    ((opline->op2_type & (IS_VAR|IS_TMP_VAR)) &&
+			    ((opline->op2_type & _IS_TMP_OR_VAR) &&
 			     (op2_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_REF)))) {
 				|	mov aword T1, r0 // save
 				|	SAVE_VALID_OPLINE opline
@@ -6587,7 +6587,7 @@ static int zend_jit_bool_jmpznz(dasm_State **Dst, const zend_op *opline, int b, 
 		|	SAVE_VALID_OPLINE opline
 		|	EXT_CALL zend_is_true, r0
 
-		if ((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+		if ((opline->op1_type & _IS_TMP_OR_VAR) &&
 			(op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 			op1_addr = ZEND_ADDR_MEM_ZVAL(ZREG_FP, opline->op1.var);
 
@@ -8018,7 +8018,7 @@ static int zend_jit_type_check(dasm_State **Dst, const zend_op *opline, int b, i
 			}
 			if (type == 0) {
 				if (smart_branch &&
-				    (opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+				    (opline->op1_type & _IS_TMP_OR_VAR) &&
 				    (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 					if ((op1_info) & (MAY_BE_ANY-(MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 						|	// if (Z_REFCOUNTED_P(cv)) {
@@ -8095,7 +8095,7 @@ static int zend_jit_type_check(dasm_State **Dst, const zend_op *opline, int b, i
 				}
 			} else {
 				if (smart_branch &&
-				    (opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+				    (opline->op1_type & _IS_TMP_OR_VAR) &&
 				    (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 					if ((op1_info) & (MAY_BE_ANY-(MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 						|	// if (Z_REFCOUNTED_P(cv)) {
@@ -8353,7 +8353,7 @@ static int zend_jit_return(dasm_State **Dst, const zend_op *opline, zend_op_arra
 		|	test r1, r1
 		ret_addr = ZEND_ADDR_MEM_ZVAL(ZREG_R1, 0);
 	}
-	if ((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
+	if ((opline->op1_type & _IS_TMP_OR_VAR) &&
 	    (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 		|	jz >1
 		|.cold_code
@@ -8622,7 +8622,7 @@ static int zend_jit_fetch_dim_read(dasm_State **Dst, const zend_op *opline, zend
 	|9: // END
 
 #ifdef ZEND_JIT_USE_RC_INFERENCE
-	if ((opline->op2_type & (IS_TMP_VAR|IS_VAR)) && (op1_info & MAY_BE_OBJECT)) {
+	if ((opline->op2_type & _IS_TMP_OR_VAR) && (op1_info & MAY_BE_OBJECT)) {
 		/* Magic offsetGet() may increase refcount of the key */
 		op2_info |= MAY_BE_RCN;
 	}
@@ -8704,7 +8704,7 @@ static int zend_jit_isset_isempty_dim(dasm_State **Dst, const zend_op *opline, i
 	}
 
 #ifdef ZEND_JIT_USE_RC_INFERENCE
-	if ((opline->op2_type & (IS_TMP_VAR|IS_VAR)) && (op1_info & MAY_BE_OBJECT)) {
+	if ((opline->op2_type & _IS_TMP_OR_VAR) && (op1_info & MAY_BE_OBJECT)) {
 		/* Magic offsetExists() may increase refcount of the key */
 		op2_info |= MAY_BE_RCN;
 	}

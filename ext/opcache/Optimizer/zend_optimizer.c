@@ -916,7 +916,7 @@ zend_op *zend_optimizer_get_loop_var_def(const zend_op_array *op_array, zend_op 
 		(free_opline->opcode == ZEND_FREE && free_opline->extended_value == ZEND_FREE_SWITCH));
 
 	while (--free_opline >= op_array->opcodes) {
-		if ((free_opline->result_type & (IS_TMP_VAR|IS_VAR)) && free_opline->result.var == var) {
+		if ((free_opline->result_type & _IS_TMP_OR_VAR) && free_opline->result.var == var) {
 			return free_opline;
 		}
 	}

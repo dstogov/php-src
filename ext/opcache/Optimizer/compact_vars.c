@@ -36,13 +36,13 @@ void zend_optimizer_compact_vars(zend_op_array *op_array) {
 	zend_bitset_clear(used_vars, used_vars_len);
 	for (i = 0; i < op_array->last; i++) {
 		zend_op *opline = &op_array->opcodes[i];
-		if (opline->op1_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->op1_type & _IS_TMP_CV_OR_VAR) {
 			zend_bitset_incl(used_vars, VAR_NUM(opline->op1.var));
 		}
-		if (opline->op2_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->op2_type & _IS_TMP_CV_OR_VAR) {
 			zend_bitset_incl(used_vars, VAR_NUM(opline->op2.var));
 		}
-		if (opline->result_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->result_type & _IS_TMP_CV_OR_VAR) {
 			zend_bitset_incl(used_vars, VAR_NUM(opline->result.var));
 			if (opline->opcode == ZEND_ROPE_INIT) {
 				uint32_t num = ((opline->extended_value * sizeof(zend_string*)) + (sizeof(zval) - 1)) / sizeof(zval);
@@ -84,13 +84,13 @@ void zend_optimizer_compact_vars(zend_op_array *op_array) {
 	/* Update CV and TMP references in opcodes */
 	for (i = 0; i < op_array->last; i++) {
 		zend_op *opline = &op_array->opcodes[i];
-		if (opline->op1_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->op1_type & _IS_TMP_CV_OR_VAR) {
 			opline->op1.var = NUM_VAR(vars_map[VAR_NUM(opline->op1.var)]);
 		}
-		if (opline->op2_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->op2_type & _IS_TMP_CV_OR_VAR) {
 			opline->op2.var = NUM_VAR(vars_map[VAR_NUM(opline->op2.var)]);
 		}
-		if (opline->result_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+		if (opline->result_type & _IS_TMP_CV_OR_VAR) {
 			opline->result.var = NUM_VAR(vars_map[VAR_NUM(opline->result.var)]);
 		}
 	}

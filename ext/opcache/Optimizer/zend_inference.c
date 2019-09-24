@@ -2926,7 +2926,7 @@ static int zend_update_type_info(const zend_op_array *op_array,
 			}
 			if (t2 & MAY_BE_REF) {
 				tmp |= MAY_BE_RC1 | MAY_BE_RCN;
-			} else if (opline->op2_type & (IS_TMP_VAR|IS_VAR)) {
+			} else if (opline->op2_type & _IS_TMP_OR_VAR) {
 				tmp |= t2 & (MAY_BE_RC1|MAY_BE_RCN);
 			} else if (t2 & (MAY_BE_RC1|MAY_BE_RCN)) {
 				tmp |= MAY_BE_RCN;
@@ -3616,7 +3616,7 @@ static int zend_update_type_info(const zend_op_array *op_array,
 				zend_arg_info *ret_info = op_array->arg_info - 1;
 				tmp = zend_fetch_arg_info_type(script, ret_info, &ce);
 			}
-			if (opline->op1_type & (IS_TMP_VAR|IS_VAR|IS_CV)) {
+			if (opline->op1_type & _IS_TMP_CV_OR_VAR) {
 				UPDATE_SSA_TYPE(tmp, ssa_ops[i].op1_def);
 				if (ce) {
 					UPDATE_SSA_OBJ_TYPE(ce, 1, ssa_ops[i].op1_def);
@@ -4385,7 +4385,7 @@ int zend_may_throw(const zend_op *opline, zend_op_array *op_array, zend_ssa *ssa
 					return 1;
 			}
 		}
-	} else if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
+	} else if (opline->op1_type & _IS_TMP_OR_VAR) {
 		if (t1 & (MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_ARRAY_OF_OBJECT|MAY_BE_ARRAY_OF_RESOURCE|MAY_BE_ARRAY_OF_ARRAY)) {
 			switch (opline->opcode) {
 				case ZEND_CASE:
@@ -4421,7 +4421,7 @@ int zend_may_throw(const zend_op *opline, zend_op_array *op_array, zend_ssa *ssa
 					return 1;
 			}
 		}
-	} else if (opline->op2_type & (IS_TMP_VAR|IS_VAR)) {
+	} else if (opline->op2_type & _IS_TMP_OR_VAR) {
 		if (t2 & (MAY_BE_OBJECT|MAY_BE_RESOURCE|MAY_BE_ARRAY_OF_OBJECT|MAY_BE_ARRAY_OF_RESOURCE|MAY_BE_ARRAY_OF_ARRAY)) {
 			switch (opline->opcode) {
 				case ZEND_ASSIGN:

@@ -641,7 +641,7 @@ static inline void zend_begin_loop(
 	brk_cont_element->parent = parent;
 	brk_cont_element->is_switch = is_switch;
 
-	if (loop_var && (loop_var->op_type & (IS_VAR|IS_TMP_VAR))) {
+	if (loop_var && (loop_var->op_type & _IS_TMP_OR_VAR)) {
 		uint32_t start = get_next_op_number();
 
 		info.opcode = free_opcode;
@@ -1996,7 +1996,7 @@ static inline uint32_t zend_emit_cond_jump(zend_uchar opcode, znode *cond, uint3
 	uint32_t opnum = get_next_op_number();
 	zend_op *opline;
 
-	if ((cond->op_type & (IS_CV|IS_CONST))
+	if (!(cond->op_type & _IS_TMP_OR_VAR)
 	 && opnum > 0
 	 && zend_is_smart_branch(CG(active_op_array)->opcodes + opnum - 1)) {
 		/* emit extra NOP to avoid incorrect SMART_BRANCH in very rare cases */
@@ -3022,7 +3022,7 @@ uint32_t zend_compile_args(zend_ast *ast, zend_function *fbc) /* {{{ */
 		arg_count++;
 		if (zend_is_call(arg)) {
 			zend_compile_var(&arg_node, arg, BP_VAR_R, 0);
-			if (arg_node.op_type & (IS_CONST|IS_TMP_VAR)) {
+			if (!(arg_node.op_type & _IS_CV_OR_VAR)) {
 				/* Function call was converted into builtin instruction */
 				opcode = ZEND_SEND_VAL;
 			} else {
@@ -4236,7 +4236,7 @@ static int zend_handle_loops_and_finally_ex(zend_long depth, znode *return_value
 		} else {
 			zend_op *opline;
 
-			ZEND_ASSERT(loop_var->var_type & (IS_VAR|IS_TMP_VAR));
+			ZEND_ASSERT(loop_var->var_type & _IS_TMP_OR_VAR);
 			opline = get_next_op();
 			opline->opcode = loop_var->opcode;
 			opline->op1_type = loop_var->var_type;
@@ -4327,7 +4327,7 @@ void zend_compile_return(zend_ast *ast) /* {{{ */
 			expr_ast ? &expr_node : NULL, CG(active_op_array)->arg_info - 1, 0);
 	}
 
-	zend_handle_loops_and_finally((expr_node.op_type & (IS_TMP_VAR | IS_VAR)) ? &expr_node : NULL);
+	zend_handle_loops_and_finally((expr_node.op_type & _IS_TMP_OR_VAR) ? &expr_node : NULL);
 
 	opline = zend_emit_op(NULL, by_ref ? ZEND_RETURN_BY_REF : ZEND_RETURN,
 		&expr_node, NULL);
@@ -4887,7 +4887,7 @@ void zend_compile_switch(zend_ast *ast) /* {{{ */
 			jmpnz_opnums[i] = zend_emit_cond_jump(ZEND_JMPNZ, &cond_node, 0);
 		} else {
 			opline = zend_emit_op(NULL,
-				(expr_node.op_type & (IS_VAR|IS_TMP_VAR)) ? ZEND_CASE : ZEND_IS_EQUAL,
+				(expr_node.op_type & _IS_TMP_OR_VAR) ? ZEND_CASE : ZEND_IS_EQUAL,
 				&expr_node, &cond_node);
 			SET_NODE(opline->result, &case_node);
 			if (opline->op1_type == IS_CONST) {
@@ -4945,7 +4945,7 @@ void zend_compile_switch(zend_ast *ast) /* {{{ */
 
 	zend_end_loop(get_next_op_number(), &expr_node);
 
-	if (expr_node.op_type & (IS_VAR|IS_TMP_VAR)) {
+	if (expr_node.op_type & _IS_TMP_OR_VAR) {
 		opline = zend_emit_op(NULL, ZEND_FREE, &expr_node, NULL);
 		opline->extended_value = ZEND_FREE_SWITCH;
 	} else if (expr_node.op_type == IS_CONST) {

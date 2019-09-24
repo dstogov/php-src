@@ -50,7 +50,7 @@ int zend_build_dfg(const zend_op_array *op_array, const zend_cfg *cfg, zend_dfg 
 			if (opline->opcode != ZEND_OP_DATA) {
 				zend_op *next = opline + 1;
 				if (next < end && next->opcode == ZEND_OP_DATA) {
-					if (next->op1_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+					if (next->op1_type & _IS_TMP_CV_OR_VAR) {
 						var_num = EX_VAR_TO_NUM(next->op1.var);
 						if (next->op1_type == IS_CV && (opline->opcode == ZEND_ASSIGN_OBJ_REF
 								|| opline->opcode == ZEND_ASSIGN_STATIC_PROP_REF)) {
@@ -62,7 +62,7 @@ int zend_build_dfg(const zend_op_array *op_array, const zend_cfg *cfg, zend_dfg 
 							}
 						}
 					}
-					if (next->op2_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+					if (next->op2_type & _IS_TMP_CV_OR_VAR) {
 						var_num = EX_VAR_TO_NUM(next->op2.var);
 						if (!DFG_ISSET(def, set_size, j, var_num)) {
 							DFG_SET(use, set_size, j, var_num);
@@ -145,7 +145,7 @@ op1_use:
 							DFG_SET(use, set_size, j, var_num);
 						}
 					}
-				} else if (opline->op1_type & (IS_VAR|IS_TMP_VAR)) {
+				} else if (opline->op1_type & _IS_TMP_OR_VAR) {
 					var_num = EX_VAR_TO_NUM(opline->op1.var);
 					if (!DFG_ISSET(def, set_size, j, var_num)) {
 						DFG_SET(use, set_size, j, var_num);
@@ -182,7 +182,7 @@ op2_use:
 							}
 							break;
 					}
-				} else if (opline->op2_type & (IS_VAR|IS_TMP_VAR)) {
+				} else if (opline->op2_type & _IS_TMP_OR_VAR) {
 					var_num = EX_VAR_TO_NUM(opline->op2.var);
 					if (opline->opcode == ZEND_FE_FETCH_R || opline->opcode == ZEND_FE_FETCH_RW) {
 						DFG_SET(def, set_size, j, var_num);
@@ -192,7 +192,7 @@ op2_use:
 						}
 					}
 				}
-				if (opline->result_type & (IS_CV|IS_VAR|IS_TMP_VAR)) {
+				if (opline->result_type & _IS_TMP_CV_OR_VAR) {
 					var_num = EX_VAR_TO_NUM(opline->result.var);
 					if ((build_flags & ZEND_SSA_USE_CV_RESULTS)
 					 && opline->result_type == IS_CV) {

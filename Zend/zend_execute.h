@@ -89,7 +89,7 @@ static zend_always_inline void zend_copy_to_variable(zval *variable_ptr, zval *v
 		if (UNEXPECTED(Z_OPT_REFCOUNTED_P(variable_ptr))) {
 			Z_ADDREF_P(variable_ptr);
 		}
-	} else if (value_type & (IS_CONST|IS_CV)) {
+	} else if (!(value_type & _IS_TMP_OR_VAR)) {
 		if (Z_OPT_REFCOUNTED_P(variable_ptr)) {
 			Z_ADDREF_P(variable_ptr);
 		}
@@ -106,7 +106,7 @@ static zend_always_inline zval* zend_assign_to_variable(zval *variable_ptr, zval
 {
 	zend_refcounted *ref = NULL;
 
-	if (ZEND_CONST_COND(value_type & (IS_VAR|IS_CV), 1) && Z_ISREF_P(value)) {
+	if (ZEND_CONST_COND(value_type & _IS_CV_OR_VAR, 1) && Z_ISREF_P(value)) {
 		ref = Z_COUNTED_P(value);
 		value = Z_REFVAL_P(value);
 	}

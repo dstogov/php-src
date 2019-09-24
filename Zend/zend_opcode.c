@@ -689,8 +689,8 @@ static void emit_live_range(
 			do {
 				use_opline--;
 			} while (!(
-				((use_opline->op1_type & (IS_TMP_VAR|IS_VAR)) && use_opline->op1.var == rt_var_num) ||
-				((use_opline->op2_type & (IS_TMP_VAR|IS_VAR)) && use_opline->op2.var == rt_var_num)
+				((use_opline->op1_type & _IS_TMP_OR_VAR) && use_opline->op1.var == rt_var_num) ||
+				((use_opline->op2_type & _IS_TMP_OR_VAR) && use_opline->op2.var == rt_var_num)
 			));
 
 			start = def_opline + 1 - op_array->opcodes;
@@ -760,7 +760,7 @@ static void zend_calc_live_ranges(
 		opnum--;
 		opline--;
 
-		if ((opline->result_type & (IS_TMP_VAR|IS_VAR)) && !is_fake_def(opline)) {
+		if ((opline->result_type & _IS_TMP_OR_VAR) && !is_fake_def(opline)) {
 			uint32_t var_num = EX_VAR_TO_NUM(opline->result.var) - var_offset;
 			/* Defs without uses can occur for two reasons: Either because the result is
 			 * genuinely unused (e.g. omitted FREE opcode for an unused boolean result), or
@@ -786,7 +786,7 @@ static void zend_calc_live_ranges(
 			}
 		}
 
-		if ((opline->op1_type & (IS_TMP_VAR|IS_VAR))) {
+		if ((opline->op1_type & _IS_TMP_OR_VAR)) {
 			uint32_t var_num = EX_VAR_TO_NUM(opline->op1.var) - var_offset;
 			if (EXPECTED(last_use[var_num] == (uint32_t) -1)) {
 				if (EXPECTED(!keeps_op1_alive(opline))) {
@@ -795,7 +795,7 @@ static void zend_calc_live_ranges(
 				}
 			}
 		}
-		if (opline->op2_type & (IS_TMP_VAR|IS_VAR)) {
+		if (opline->op2_type & _IS_TMP_OR_VAR) {
 			uint32_t var_num = EX_VAR_TO_NUM(opline->op2.var) - var_offset;
 			if (EXPECTED(last_use[var_num] == (uint32_t) -1)) {
 #if 1
@@ -994,15 +994,15 @@ ZEND_API int pass_two(zend_op_array *op_array)
 		}
 		if (opline->op1_type == IS_CONST) {
 			ZEND_PASS_TWO_UPDATE_CONSTANT(op_array, opline, opline->op1);
-		} else if (opline->op1_type & (IS_VAR|IS_TMP_VAR)) {
+		} else if (opline->op1_type & _IS_TMP_OR_VAR) {
 			opline->op1.var = (uint32_t)(zend_intptr_t)ZEND_CALL_VAR_NUM(NULL, op_array->last_var + opline->op1.var);
 		}
 		if (opline->op2_type == IS_CONST) {
 			ZEND_PASS_TWO_UPDATE_CONSTANT(op_array, opline, opline->op2);
-		} else if (opline->op2_type & (IS_VAR|IS_TMP_VAR)) {
+		} else if (opline->op2_type & _IS_TMP_OR_VAR) {
 			opline->op2.var = (uint32_t)(zend_intptr_t)ZEND_CALL_VAR_NUM(NULL, op_array->last_var + opline->op2.var);
 		}
-		if (opline->result_type & (IS_VAR|IS_TMP_VAR)) {
+		if (opline->result_type & _IS_TMP_OR_VAR) {
 			opline->result.var = (uint32_t)(zend_intptr_t)ZEND_CALL_VAR_NUM(NULL, op_array->last_var + opline->result.var);
 		}
 		ZEND_VM_SET_OPCODE_HANDLER(opline);

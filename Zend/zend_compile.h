@@ -141,9 +141,10 @@ struct _zend_op {
 	uint32_t extended_value;
 	uint32_t lineno;
 	zend_uchar opcode;
-	zend_uchar op1_type;
-	zend_uchar op2_type;
-	zend_uchar result_type;
+	zend_uchar op1_type    : 3;
+	zend_uchar op2_type    : 3;
+	zend_uchar result_type : 2;
+	uint16_t   handler_idx;
 };
 
 
@@ -696,11 +697,15 @@ struct _zend_execute_data {
 #define ZEND_OP_ARRAY_EXTENSION(op_array, handle) \
 	((void**)RUN_TIME_CACHE(op_array))[handle]
 
-#define IS_UNUSED	0		/* Unused operand */
-#define IS_CONST	(1<<0)
-#define IS_TMP_VAR	(1<<1)
-#define IS_VAR		(1<<2)
-#define IS_CV		(1<<3)	/* Compiled variable */
+#define IS_UNUSED	0	/* 000 Unused operand */
+#define IS_CV		1	/* 001 Compiled variable */
+#define IS_TMP_VAR	2	/* 010 */
+#define IS_VAR		3	/* 011 */
+#define IS_CONST	4	/* 100 */
+
+#define _IS_TMP_OR_VAR    IS_TMP_VAR
+#define _IS_CV_OR_VAR     IS_CV
+#define _IS_TMP_CV_OR_VAR IS_VAR
 
 #define ZEND_EXTRA_VALUE 1
 
