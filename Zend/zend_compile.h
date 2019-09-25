@@ -37,6 +37,7 @@
 	(opline)->op1_type =  IS_UNUSED; \
 	(opline)->op2_type = IS_UNUSED; \
 	(opline)->result_type = IS_UNUSED; \
+	(opline)->handler_idx = 0; \
 } while (0)
 
 #define RESET_DOC_COMMENT() do { \
