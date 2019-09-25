@@ -2781,7 +2781,8 @@ function gen_vm($def, $skel) {
 	out($f, "{\n");
 	out($f, "\tzend_uchar opcode = zend_user_opcodes[op->opcode];\n");
 	if (!ZEND_VM_SPEC) {
-		out($f, "\top->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(opcode, op)];\n");
+		out($f, "\top->handler_idx = zend_vm_get_opcode_handler_idx(opcode, op);\n");
+		out($f, "\top->handler = zend_opcode_handlers[op->handler_idx];\n");
 	} else {
 		out($f, "\n");
 		out($f, "\tif (zend_spec_handlers[op->opcode] & SPEC_RULE_COMMUTATIVE) {\n");
@@ -2789,7 +2790,8 @@ function gen_vm($def, $skel) {
 		out($f, "\t\t\tzend_swap_operands(op);\n");
 		out($f, "\t\t}\n");
 		out($f, "\t}\n");
-		out($f, "\top->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(zend_spec_handlers[opcode], op)];\n");
+		out($f, "\top->handler_idx = zend_vm_get_opcode_handler_idx(zend_spec_handlers[opcode], op);\n");
+		out($f, "\top->handler = zend_opcode_handlers[op->handler_idx];\n");
 	}
 	out($f, "}\n\n");
 
@@ -2798,7 +2800,8 @@ function gen_vm($def, $skel) {
 	out($f, "{\n");
 	out($f, "\tzend_uchar opcode = zend_user_opcodes[op->opcode];\n");
 	if (!ZEND_VM_SPEC) {
-		out($f, "\top->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(opcode, op)];\n");
+		out($f, "\top->handler_idx = zend_vm_get_opcode_handler_idx(opcode, op);\n");
+		out($f, "\top->handler = zend_opcode_handlers[op->handler_idx];\n");
 	} else {
 		out($f, "\tuint32_t spec = zend_spec_handlers[opcode];\n");
 		if (isset($used_extra_spec["TYPE"])) {
@@ -2867,7 +2870,8 @@ function gen_vm($def, $skel) {
 			out($f, "\t\t\tbreak;\n");
 			out($f, "\t}\n");
 		}
-		out($f, "\top->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(spec, op)];\n");
+		out($f, "\top->handler_idx = zend_vm_get_opcode_handler_idx(spec, op);\n");
+		out($f, "\top->handler = zend_opcode_handlers[op->handler_idx];\n");
 	}
 	out($f, "}\n\n");
 
@@ -2895,7 +2899,7 @@ function gen_vm($def, $skel) {
 		out($f,"#if defined(ZEND_VM_FP_GLOBAL_REG) && defined(ZEND_VM_IP_GLOBAL_REG)\n");
 		if (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID) {
 			out($f,"#if (ZEND_VM_KIND == ZEND_VM_KIND_HYBRID)\n");
-			out($f, "\thandler = (opcode_handler_t)zend_vm_get_opcode_handler_func(zend_user_opcodes[opline->opcode], opline);\n");
+			out($f, "\thandler = zend_opcode_handler_funcs[opline->handler_idx];\n");
 			out($f, "\thandler(ZEND_OPCODE_HANDLER_ARGS_PASSTHRU);\n");
 			out($f, "\tif (EXPECTED(opline != &hybrid_halt_op)) {\n");
 			out($f,"#else\n");
