@@ -1434,7 +1434,7 @@ static ZEND_VM_HOT ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DO_FCALL_BY_NAME_S
 					ret = &retval;
 					ZVAL_UNDEF(ret);
 				}
-				goto fcall_end;
+				goto fcall_by_name_end;
 			}
 		}
 
@@ -1467,7 +1467,7 @@ static ZEND_VM_HOT ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DO_FCALL_BY_NAME_S
 
 		EG(current_execute_data) = execute_data;
 
-fcall_end:
+fcall_by_name_end:
 		zend_vm_stack_free_args(call);
 		zend_vm_stack_free_call_frame(call);
 
@@ -1518,7 +1518,7 @@ static ZEND_VM_HOT ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DO_FCALL_BY_NAME_S
 					ret = &retval;
 					ZVAL_UNDEF(ret);
 				}
-				goto fcall_end;
+				goto fcall_by_name_end;
 			}
 		}
 
@@ -1551,7 +1551,7 @@ static ZEND_VM_HOT ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DO_FCALL_BY_NAME_S
 
 		EG(current_execute_data) = execute_data;
 
-fcall_end:
+fcall_by_name_end:
 		zend_vm_stack_free_args(call);
 		zend_vm_stack_free_call_frame(call);
 
@@ -61841,7 +61841,7 @@ ZEND_API int zend_vm_kind(void)
 	return ZEND_VM_KIND;
 }
 
-static const void* ZEND_FASTCALL zend_vm_get_opcode_handler_ex(uint32_t spec, const zend_op* op)
+static const uint32_t ZEND_FASTCALL zend_vm_get_opcode_handler_idx(uint32_t spec, const zend_op* op)
 {
 	uint32_t offset = 0;
 	if (spec & SPEC_RULE_OP1) offset = offset * 5 + op->op1_type;
@@ -61864,13 +61864,13 @@ static const void* ZEND_FASTCALL zend_vm_get_opcode_handler_ex(uint32_t spec, co
 			}
 		}
 	}
-	return zend_opcode_handlers[(spec & SPEC_START_MASK) + offset];
+	return (spec & SPEC_START_MASK) + offset;
 }
 
 #if (ZEND_VM_KIND != ZEND_VM_KIND_HYBRID) || !ZEND_VM_SPEC
 static const void *zend_vm_get_opcode_handler(zend_uchar opcode, const zend_op* op)
 {
-	return zend_vm_get_opcode_handler_ex(zend_spec_handlers[opcode], op);
+	return zend_opcode_handlers[zend_vm_get_opcode_handler_idx(zend_spec_handlers[opcode], op)];
 }
 #endif
 
@@ -61878,24 +61878,7 @@ static const void *zend_vm_get_opcode_handler(zend_uchar opcode, const zend_op* 
 static const void *zend_vm_get_opcode_handler_func(zend_uchar opcode, const zend_op* op)
 {
 	uint32_t spec = zend_spec_handlers[opcode];
-	uint32_t offset = 0;
-	if (spec & SPEC_RULE_OP1) offset = offset * 5 + op->op1_type;
-	if (spec & SPEC_RULE_OP2) offset = offset * 5 + op->op2_type;
-	if (spec & SPEC_EXTRA_MASK) {
-		if (spec & SPEC_RULE_OP_DATA) offset = offset * 5 + (op + 1)->op1_type;
-		else if (spec & SPEC_RULE_RETVAL) offset = offset * 2 + (op->result_type != IS_UNUSED);
-		else if (spec & SPEC_RULE_QUICK_ARG) offset = offset * 2 + (op->op2.num <= MAX_ARG_FLAG_NUM);
-		else if (spec & SPEC_RULE_SMART_BRANCH) {
-			offset = offset * 3;
-			if ((op+1)->opcode == ZEND_JMPZ) {
-				offset += 1;
-			} else if ((op+1)->opcode == ZEND_JMPNZ) {
-				offset += 2;
-			}
-		}
-		else if (spec & SPEC_RULE_ISSET) offset = offset * 2 + (op->extended_value & ZEND_ISEMPTY);
-	}
-	return zend_opcode_handler_funcs[(spec & SPEC_START_MASK) + offset];
+	return zend_opcode_handler_funcs[zend_vm_get_opcode_handler_idx(spec, op)];
 }
 
 #endif
@@ -61909,7 +61892,7 @@ ZEND_API void ZEND_FASTCALL zend_vm_set_opcode_handler(zend_op* op)
 			zend_swap_operands(op);
 		}
 	}
-	op->handler = zend_vm_get_opcode_handler_ex(zend_spec_handlers[opcode], op);
+	op->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(zend_spec_handlers[opcode], op)];
 }
 
 ZEND_API void ZEND_FASTCALL zend_vm_set_opcode_handler_ex(zend_op* op, uint32_t op1_info, uint32_t op2_info, uint32_t res_info)
@@ -62136,7 +62119,7 @@ ZEND_API void ZEND_FASTCALL zend_vm_set_opcode_handler_ex(zend_op* op, uint32_t 
 		default:
 			break;
 	}
-	op->handler = zend_vm_get_opcode_handler_ex(spec, op);
+	op->handler = zend_opcode_handlers[zend_vm_get_opcode_handler_idx(spec, op)];
 }
 
 ZEND_API int ZEND_FASTCALL zend_vm_call_opcode_handler(zend_execute_data* ex)
