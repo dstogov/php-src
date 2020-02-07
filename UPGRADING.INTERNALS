@@ -95,7 +95,7 @@ PHP 8.0 INTERNALS UPGRADE NOTES
      Actually, all assignments (ZEND_ASSIGN, ZEND_ASSIGN_DIM, ZEND_ASSIGN_OBJ,
      ZEND_ASSIGN_STATIC_PROP), all compound assignments (ZEND_ASSIGN_OP,
      ZEND_ASSIGN_DIM_OP, ZEND_ASSIGN_OBJ_OP, ZEND_ASSIGN_STATIC_PROP_OP) and all
-     pre increments/decremets (ZEND_PRE_INC, ZEND_PRE_DEC, ZEND_PRE_INC_OBJ
+     pre increments/decrements (ZEND_PRE_INC, ZEND_PRE_DEC, ZEND_PRE_INC_OBJ
      ZEND_PRE_DEC_OBJ, ZEND_PRE_INC_STATIC_PROP ZEND_PRE_DEC_STATIC_PROP).
 
 ========================
