@@ -2619,6 +2619,13 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 				}
 			}
 		}
+
+		if (trace_buffer->start == ZEND_JIT_TRACE_START_ENTER) {
+			last_var = op_array->last_var + op_array->T;
+			for (i = op_array->last_var; i < last_var; i++) {
+				SET_STACK_TYPE(stack, i, IS_UNKNOWN);
+			}
+		}
 	}
 
 	if (trace_buffer->stop == ZEND_JIT_TRACE_STOP_LOOP
