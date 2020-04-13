@@ -2234,14 +2234,14 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 
 		while (phi) {
 			if (start[phi->sources[1]] >= 0) {
-				end[phi->sources[1]] = idx/* - 1*/;
+				end[phi->sources[1]] = idx;
 			}
 			phi = phi->next;
 		}
 
 		for (i = 0; i < op_array->last_var; i++) {
 			if (start[i] >= 0 && !ssa->vars[i].phi_use_chain) {
-				end[i] = idx/* - 1*/;
+				end[i] = idx;
 			}
 		}
 	}
@@ -2261,7 +2261,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 				if (ssa->vars[i].var >= 0
 				 && ssa->vars[i].var < op_array->last_var
 				 && !zend_bitset_in(set, ssa->vars[i].var)) {
-					end[i] = idx/* - 1*/;
+					end[i] = idx;
 					zend_bitset_incl(set, ssa->vars[i].var);
 				}
 			}
@@ -2284,7 +2284,8 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 		if (start[i] >= 0) {
 			if (end[i] < 0) {
 				// TODO: ???
-				end[i] = idx - 1;
+				assert(0);
+				end[i] = idx;
 				// continue;
 			}
 //fprintf(stderr, "#%d: %d..%d\n", i, start[i], end[i]);
