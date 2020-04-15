@@ -16,6 +16,7 @@
    +----------------------------------------------------------------------+
 */
 
+static zend_op_array dummy_op_array;
 static zend_jit_trace_info *zend_jit_traces = NULL;
 static const void **zend_jit_exit_groups = NULL;
 
@@ -59,6 +60,10 @@ static int zend_jit_trace_startup(void)
 	ZEND_JIT_COUNTER_NUM = 0;
 	ZEND_JIT_EXIT_NUM = 0;
 	ZEND_JIT_EXIT_COUNTERS = 0;
+
+	memset(&dummy_op_array, 0, sizeof(dummy_op_array));
+	dummy_op_array.fn_flags = ZEND_ACC_DONE_PASS_TWO;
+
 	return SUCCESS;
 }
 
@@ -1788,8 +1793,8 @@ static int zend_jit_trace_try_allocate_free_reg(zend_jit_trace_rec *trace_buffer
 			regset = zend_jit_get_scratch_regset(
 				ssa_opcodes[line],
 				ssa->ops + line,
-				// TODO: Support for nested call frames ????
-				trace_buffer->op_array, ssa, current->ssa_var, line == last_use_line);
+				/* op_array is not actually used (only fn_flags matters) */
+				&dummy_op_array, ssa, current->ssa_var, line == last_use_line);
 			ZEND_REGSET_FOREACH(regset, reg) {
 				if (line < freeUntilPos[reg]) {
 					freeUntilPos[reg] = line;
@@ -2033,6 +2038,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 	int i, j, idx, count, level;
 	int *start, *end;
 	uint8_t *flags;
+	const zend_op_array **vars_op_array;
 	zend_lifetime_interval **intervals, *list, *ival;
 	void *checkpoint;
 	zend_jit_trace_stack_frame *frame;
@@ -2042,15 +2048,18 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 	ZEND_ASSERT(ssa->var_info != NULL);
 
 	start = do_alloca(sizeof(int) * ssa->vars_count * 2 +
-		sizeof(uint8_t) * ssa->vars_count, use_heap);
+		ZEND_MM_ALIGNED_SIZE(sizeof(uint8_t) * ssa->vars_count) +
+		sizeof(zend_op_array*) * ssa->vars_count, use_heap);
 	if (!start) {
 		return NULL;
 	}
 	end = start + ssa->vars_count;
 	flags = (uint8_t*)(end + ssa->vars_count);
+	vars_op_array = (const zend_op_array**)(flags + ZEND_MM_ALIGNED_SIZE(sizeof(uint8_t) * ssa->vars_count));
 
 	memset(start, -1, sizeof(int) * ssa->vars_count * 2);
-	memset(flags, -0, sizeof(uint8_t) * ssa->vars_count);
+	memset(flags, 0, sizeof(uint8_t) * ssa->vars_count);
+	memset(vars_op_array, 0, sizeof(zend_op_array*) * ssa->vars_count);
 
 	op_array = trace_buffer->op_array;
 	jit_extension =
@@ -2068,6 +2077,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 	}
 	while (i < j) {
 		SET_STACK_VAR(stack, i, i);
+		vars_op_array[i] = op_array;
 		/* We don't start intervals for variables used in Phi */
 		if ((ssa->vars[i].use_chain >= 0 /*|| ssa->vars[i].phi_use_chain*/)
 		 && zend_jit_var_supports_reg(ssa, i)) {
@@ -2091,6 +2101,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 
 		while (phi) {
 			SET_STACK_VAR(stack, phi->var, phi->ssa_var);
+			vars_op_array[phi->ssa_var] = op_array;
 			if (ssa->vars[phi->ssa_var].use_chain >= 0
 			 && zend_jit_var_supports_reg(ssa, phi->ssa_var)) {
 				start[phi->ssa_var] = 0;
@@ -2171,6 +2182,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 			      || ssa->vars[ssa_op->result_def].phi_use_chain)
 				 && zend_jit_var_supports_reg(ssa, ssa_op->result_def)) {
 					start[ssa_op->result_def] = idx;
+					vars_op_array[ssa_op->result_def] = op_array;
 					count++;
 				}
 				if (ssa_op->op1_def >= 0
@@ -2178,6 +2190,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 			      || ssa->vars[ssa_op->op1_def].phi_use_chain)
 				 && zend_jit_var_supports_reg(ssa, ssa_op->op1_def)) {
 					start[ssa_op->op1_def] = idx;
+					vars_op_array[ssa_op->op1_def] = op_array;
 					count++;
 				}
 				if (ssa_op->op2_def >= 0
@@ -2185,6 +2198,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 			      || ssa->vars[ssa_op->op2_def].phi_use_chain)
 				 && zend_jit_var_supports_reg(ssa, ssa_op->op2_def)) {
 					start[ssa_op->op2_def] = idx;
+					vars_op_array[ssa_op->op2_def] = op_array;
 					count++;
 				}
 			}
@@ -2227,6 +2241,7 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 					      || ssa->vars[ssa_op->op1_def].phi_use_chain)
 						 && zend_jit_var_supports_reg(ssa, ssa_op->op1_def)) {
 							start[ssa_op->op1_def] = idx;
+							vars_op_array[ssa_op->op1_def] = op_array;
 							count++;
 						}
 					}
@@ -2270,52 +2285,50 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 					break;
 			}
 		} else if (p->op == ZEND_JIT_TRACE_ENTER) {
-			// TODO: Support for nested call frames ????
-			free_alloca(start, use_heap);
-			return NULL;
+			/* New call frames */
+			frame = zend_jit_trace_call_frame(frame, op_array);
+			stack = frame->stack;
 			op_array = p->op_array;
 			jit_extension =
 				(zend_jit_op_array_trace_extension*)ZEND_FUNC_INFO(op_array);
 			op_array_ssa = &jit_extension->func_info.ssa;
-			/* New call frames */
-			frame = zend_jit_trace_call_frame(frame, op_array);
-			stack = frame->stack;
 			j = p->first_ssa_var;
 			for (i = 0; i < op_array->last_var; i++) {
 				SET_STACK_VAR(stack, i, j);
+				vars_op_array[j] = op_array;
 				if (ssa->vars[j].use_chain >= 0
 				 && zend_jit_var_supports_reg(ssa, j)) {
 					start[j] = idx;
+					flags[j] = ZREG_LOAD;
 					count++;
 				}
 				j++;
 			}
-			for (i = 0; i < op_array->last_var + op_array->T; i++) {
+			for (i = op_array->last_var; i < op_array->last_var + op_array->T; i++) {
 				SET_STACK_VAR(stack, i, -1);
 			}
 			level++;
 		} else if (p->op == ZEND_JIT_TRACE_BACK) {
-			// TODO: Support for nested call frames ????
-			free_alloca(start, use_heap);
-			return NULL;
 			/* Close exiting call frames */
 			for (i = 0; i < op_array->last_var; i++) {
 				zend_jit_close_var(stack, i, ssa, ssa_opcodes, op_array, op_array_ssa, start, end, flags, idx);
 			}
-			frame = zend_jit_trace_ret_frame(frame, op_array);
-			stack = frame->stack;
 			op_array = p->op_array;
 			jit_extension =
 				(zend_jit_op_array_trace_extension*)ZEND_FUNC_INFO(op_array);
 			op_array_ssa = &jit_extension->func_info.ssa;
+			frame = zend_jit_trace_ret_frame(frame, op_array);
+			stack = frame->stack;
 			if (level == 0) {
 				/* New return frames */
 				j = p->first_ssa_var;
 				for (i = 0; i < op_array->last_var + op_array->T; i++) {
 					SET_STACK_VAR(stack, i, j);
+					vars_op_array[j] = op_array;
 					if (ssa->vars[j].use_chain >= 0
 					 && zend_jit_var_supports_reg(ssa, j)) {
 						start[j] = idx;
+						flags[j] = ZREG_LOAD;
 						count++;
 					}
 					j++;
@@ -2377,7 +2390,6 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 			j++;
 		}
 	}
-	ZEND_ASSERT(j == count);
 	free_alloca(start, use_heap);
 	start = end = NULL;
 
@@ -2459,12 +2471,9 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 	if (list) {
 		if (ZCG(accel_directives).jit_debug & ZEND_JIT_DEBUG_REG_ALLOC) {
 			fprintf(stderr, "---- TRACE %d Live Ranges\n", ZEND_JIT_TRACE_NUM);
-			// TODO: Support for nested call frames ????
-			op_array = trace_buffer->op_array;
 			ival = list;
 			while (ival) {
-				// TODO: Support for nested call frames ????
-				zend_jit_dump_lifetime_interval(op_array, ssa, ival);
+				zend_jit_dump_lifetime_interval(vars_op_array[ival->ssa_var], ssa, ival);
 				ival = ival->list_next;
 			}
 		}
@@ -2547,13 +2556,11 @@ static zend_lifetime_interval** zend_jit_trace_allocate_registers(zend_jit_trace
 		// Remove intervals used once ????
 
 		if (ZCG(accel_directives).jit_debug & ZEND_JIT_DEBUG_REG_ALLOC) {
-			// TODO: Support for nested call frames ????
 			fprintf(stderr, "---- TRACE %d Allocated Live Ranges\n", ZEND_JIT_TRACE_NUM);
 			for (i = 0; i < ssa->vars_count; i++) {
 				ival = intervals[i];
 				while (ival) {
-					// TODO: Support for nested call frames ????
-					zend_jit_dump_lifetime_interval(op_array, ssa, ival);
+					zend_jit_dump_lifetime_interval(vars_op_array[ival->ssa_var], ssa, ival);
 					ival = ival->list_next;
 				}
 			}
@@ -2706,7 +2713,10 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 				}
 			}
 
-			if (ra && ra[i] && (ra[i]->flags & ZREG_LOAD) != 0) {
+			if (ra
+			 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_CALL
+			 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_RET
+			 && ra[i] && (ra[i]->flags & ZREG_LOAD) != 0) {
 				//SET_STACK_REG(stack, i, ra[i]->reg);
 				if (!zend_jit_load_var(&dasm_state, info, i, ra[i]->reg)) {
 					goto jit_failure;
@@ -2751,6 +2761,20 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 					}
 				}
 				phi = phi->next;
+			}
+		} else if (ra) {
+			int last_var = op_array->last_var;
+
+			if (trace_buffer->start != ZEND_JIT_TRACE_START_ENTER) {
+				last_var += op_array->T;
+			}
+			for (i = 0; i < last_var; i++) {
+				if (ra && ra[i] && (ra[i]->flags & ZREG_LOAD) != 0) {
+					//SET_STACK_REG(stack, i, ra[i]->reg);
+					if (!zend_jit_load_var(&dasm_state, ssa->var_info[i].type, i, ra[i]->reg)) {
+						goto jit_failure;
+					}
+				}
 			}
 		}
 	}
@@ -3924,6 +3948,18 @@ done:
 			}
 			JIT_G(current_frame) = frame = call;
 			stack = frame->stack;
+			if (ra) {
+				for (i = 0; i < op_array->last_var; i++) {
+					int j = p->first_ssa_var + i;
+
+					if (ra[j] && (ra[j]->flags & ZREG_LOAD) != 0) {
+						//SET_STACK_REG(stack, i, ra[j]->reg);
+						if (!zend_jit_load_var(&dasm_state, ssa->var_info[j].type, i, ra[j]->reg)) {
+							goto jit_failure;
+						}
+					}
+				}
+			}
 			zend_jit_set_opline(&dasm_state, (p+1)->opline);
 		} else if (p->op == ZEND_JIT_TRACE_BACK) {
 			op_array = (zend_op_array*)p->op_array;
@@ -3946,6 +3982,18 @@ done:
 						SET_STACK_TYPE(stack, i, concrete_type(ssa->var_info[p->first_ssa_var + i].type));
 					} else {
 						SET_STACK_TYPE(stack, i, IS_UNKNOWN);
+					}
+				}
+				if (ra) {
+					for (i = 0; i < op_array->last_var + op_array->T; i++) {
+						int j = p->first_ssa_var + i;
+
+						if (ra[j] && (ra[j]->flags & ZREG_LOAD) != 0) {
+							//SET_STACK_REG(stack, i, ra[j]->reg);
+							if (!zend_jit_load_var(&dasm_state, ssa->var_info[j].type, i, ra[j]->reg)) {
+								goto jit_failure;
+							}
+						}
 					}
 				}
 			}
