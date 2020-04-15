@@ -174,6 +174,7 @@ static uint32_t zend_jit_trace_get_exit_point(const zend_op *from_opline, const 
 		}
 		t->exit_count++;
 		t->exit_info[exit_point].opline = to_opline;
+		t->exit_info[exit_point].op_array = op_array;
 		t->exit_info[exit_point].stack_size = stack_size;
 		t->exit_info[exit_point].stack_offset = stack_offset;
 	}
@@ -4541,14 +4542,13 @@ static void zend_jit_dump_exit_info(zend_jit_trace_info *t)
 
 	fprintf(stderr, "---- TRACE %d exit info\n", t->id);
 	for (i = 0; i < t->exit_count; i++) {
+		const zend_op_array *op_array = t->exit_info[i].op_array;
 		uint32_t stack_size = t->exit_info[i].stack_size;
 		zend_jit_trace_stack *stack = t->stack_map + t->exit_info[i].stack_offset;
 
 		fprintf(stderr, "     exit_%d:", i);
 		if (t->exit_info[i].opline) {
-			// TODO: print exit opline number ????
-			//fprintf(stderr, " %04d/", t->exit_info[i].opline - op_array->opcodes);
-			fprintf(stderr, " XXXX/");
+			fprintf(stderr, " %04d/", t->exit_info[i].opline - op_array->opcodes);
 		} else {
 			fprintf(stderr, " ----/");
 		}
@@ -4560,8 +4560,9 @@ static void zend_jit_dump_exit_info(zend_jit_trace_info *t)
 		for (j = 0; j < stack_size; j++) {
 			zend_uchar type = STACK_TYPE(stack, j);
 			if (type != IS_UNKNOWN) {
-				// TODO: print CV insted of X ????
-				fprintf(stderr, " X%d:", j);
+				fprintf(stderr, " ");
+				zend_dump_var(op_array, (j < op_array->last_var) ? IS_CV : 0, j);
+				fprintf(stderr, ":");
 				if (type == IS_UNDEF) {
 					fprintf(stderr, "undef");
 				} else {
