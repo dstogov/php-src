@@ -2027,6 +2027,13 @@ static void zend_jit_close_var(zend_jit_trace_stack *stack, uint32_t n, const ze
 				}
 			}
 		}
+#if 0
+		// TODO: try this optimization later ???
+		if (flags[var] & (ZREG_LOAD|ZREG_STORE)) {
+			/* we don't have to extend live range if it's already in memory */
+			return;
+		}
+#endif
 		// TODO: shrink interval to last side exit ????
 		end[var] = idx;
 	}
