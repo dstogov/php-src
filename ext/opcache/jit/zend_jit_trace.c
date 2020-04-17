@@ -2716,22 +2716,27 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 			} else {
 				SET_STACK_TYPE(stack, i, IS_UNKNOWN);
 			}
+		}
 
-			if ( i < parent_vars_count
-			 && STACK_REG(parent_stack, i) != ZREG_NONE) {
+		// TODO: Merge two loops implementing paralel move ???
+		for (i = 0; i < parent_vars_count; i++) {
+			if (STACK_REG(parent_stack, i) != ZREG_NONE) {
 				// TODO: optimize out useless stores ????
-				if (!zend_jit_store_var(&dasm_state, info, i, STACK_REG(parent_stack, i))) {
+				if (!zend_jit_store_var(&dasm_state, ssa->var_info[i].type, i, STACK_REG(parent_stack, i))) {
 					goto jit_failure;
 				}
 			}
+		}
 
-			if (ra
-			 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_CALL
-			 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_RET
-			 && ra[i] && (ra[i]->flags & ZREG_LOAD) != 0) {
-				//SET_STACK_REG(stack, i, ra[i]->reg);
-				if (!zend_jit_load_var(&dasm_state, info, i, ra[i]->reg)) {
-					goto jit_failure;
+		if (ra
+		 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_CALL
+		 && trace_buffer->stop != ZEND_JIT_TRACE_STOP_RECURSIVE_RET) {
+			for (i = 0; i < last_var; i++) {
+				if (ra[i] && (ra[i]->flags & ZREG_LOAD) != 0) {
+					//SET_STACK_REG(stack, i, ra[i]->reg);
+					if (!zend_jit_load_var(&dasm_state, ssa->var_info[i].type, i, ra[i]->reg)) {
+						goto jit_failure;
+					}
 				}
 			}
 		}
