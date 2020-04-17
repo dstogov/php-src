@@ -119,15 +119,6 @@ static void zend_jit_trace_add_code(const void *start, uint32_t size);
 
 static zend_bool zend_ssa_is_last_use(const zend_op_array *op_array, const zend_ssa *ssa, int var, int use)
 {
-	/* Check for reassignment */
-	if (ssa->ops[use].op1_use == var && ssa->ops[use].op1_def >= 0) {
-		return 1;
-	} else if (ssa->ops[use].op2_use == var && ssa->ops[use].op2_def >= 0) {
-		return 1;
-	} else if (ssa->ops[use].result_use == var && ssa->ops[use].result_def >= 0) {
-		return 1;
-	}
-
 	if (ssa->vars[var].phi_use_chain) {
 		zend_ssa_phi *phi = ssa->vars[var].phi_use_chain;
 		do {
