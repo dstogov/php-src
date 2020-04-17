@@ -4559,7 +4559,7 @@ static void zend_jit_dump_exit_info(zend_jit_trace_info *t)
 
 		fprintf(stderr, "     exit_%d:", i);
 		if (t->exit_info[i].opline) {
-			fprintf(stderr, " %04d/", t->exit_info[i].opline - op_array->opcodes);
+			fprintf(stderr, " %04d/", (int)(t->exit_info[i].opline - op_array->opcodes));
 		} else {
 			fprintf(stderr, " ----/");
 		}
