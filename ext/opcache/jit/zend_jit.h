@@ -99,8 +99,8 @@
 #define ZEND_JIT_TRACE_HOT_SIDE_COUNT       8 /* number of exits before taking side trace */
 #define ZEND_JIT_TRACE_HOT_RETURN_COUNT     8 /* number of returns before taking continuation trace */
 
-#define ZEND_JIT_TRACE_MAX_ROOT_FAILURES   16 /* number of attemts to record/compile a root trace */
-#define ZEND_JIT_TRACE_MAX_SIDE_FAILURES    4 /* number of attemts to record/compile a side trace */
+#define ZEND_JIT_TRACE_MAX_ROOT_FAILURES   16 /* number of attempts to record/compile a root trace */
+#define ZEND_JIT_TRACE_MAX_SIDE_FAILURES    4 /* number of attempts to record/compile a side trace */
 
 #define ZEND_JIT_TRACE_BAD_ROOT_SLOTS      64 /* number of slots in bad root trace cache */
 
