@@ -632,7 +632,7 @@ declared_property:
 
 					if (EXPECTED(!ret)) {
 						var_push_dtor(var_hash, old_data);
-						data = zend_hash_update_ind(ht, Z_STR(key), &d);
+						data = zend_hash_update(ht, Z_STR(key), &d);
 					} else if (ret < 0) {
 						goto failure;
 					} else {
@@ -653,7 +653,7 @@ second_try:
 							goto declared_property;
 						} else {
 							var_push_dtor(var_hash, old_data);
-							data = zend_hash_update_ind(ht, Z_STR(key), &d);
+							data = zend_hash_update(ht, Z_STR(key), &d);
 						}
 					} else {
 						data = zend_hash_add_new(ht, Z_STR(key), &d);
