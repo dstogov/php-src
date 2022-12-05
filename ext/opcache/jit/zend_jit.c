@@ -4096,7 +4096,6 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
-#ifndef ZEND_JIT_IR //???
 					case ZEND_IN_ARRAY:
 						if (opline->op1_type == IS_VAR || opline->op1_type == IS_TMP_VAR) {
 							break;
@@ -4126,6 +4125,7 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
+#ifndef ZEND_JIT_IR //???
 					case ZEND_FETCH_DIM_R:
 					case ZEND_FETCH_DIM_IS:
 					case ZEND_FETCH_LIST_R:
