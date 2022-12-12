@@ -4235,6 +4235,7 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
+#endif
 					case ZEND_RECV:
 						if (!zend_jit_recv(&ctx, opline, op_array)) {
 							goto jit_failure;
@@ -4247,7 +4248,6 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
-#endif
 					case ZEND_FREE:
 					case ZEND_FE_FREE:
 						if (!zend_jit_free(&ctx, opline, OP1_INFO(),
