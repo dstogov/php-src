@@ -2884,9 +2884,7 @@ static bool zend_jit_next_is_send_result(const zend_op *opline)
 	 && (opline+1)->op1_type == IS_TMP_VAR
 	 && (opline+1)->op2_type != IS_CONST
 	 && (opline+1)->op1.var == opline->result.var) {
-#ifndef ZEND_JIT_IR //???
 		return 1;
-#endif
 	}
 	return 0;
 }
@@ -3391,14 +3389,12 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 						if (Z_MODE(res_addr) != IS_REG
 						 && (i + 1) <= end
 						 && zend_jit_next_is_send_result(opline)) {
-#ifndef ZEND_JIT_IR //???
 							i++;
 							res_use_info = -1;
 							res_addr = ZEND_ADDR_MEM_ZVAL(ZREG_RX, (opline+1)->result.var);
 							if (!zend_jit_reuse_ip(&ctx)) {
 								goto jit_failure;
 							}
-#endif
 						} else {
 							res_use_info = -1;
 
@@ -3447,14 +3443,12 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 						if (Z_MODE(res_addr) != IS_REG
 						 && (i + 1) <= end
 						 && zend_jit_next_is_send_result(opline)) {
-#ifndef ZEND_JIT_IR //???
 							i++;
 							res_use_info = -1;
 							res_addr = ZEND_ADDR_MEM_ZVAL(ZREG_RX, (opline+1)->result.var);
 							if (!zend_jit_reuse_ip(&ctx)) {
 								goto jit_failure;
 							}
-#endif
 						} else {
 							res_use_info = -1;
 
@@ -3506,13 +3500,11 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 						res_addr = RES_REG_ADDR();
 						if ((i + 1) <= end
 						 && zend_jit_next_is_send_result(opline)) {
-#ifndef ZEND_JIT_IR //???
 							i++;
 							res_addr = ZEND_ADDR_MEM_ZVAL(ZREG_RX, (opline+1)->result.var);
 							if (!zend_jit_reuse_ip(&ctx)) {
 								goto jit_failure;
 							}
-#endif
 						}
 						if (!zend_jit_concat(&ctx, opline,
 								op1_info, op2_info, res_addr,
@@ -3738,13 +3730,11 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							 && (i + 1) <= end
 							 && zend_jit_next_is_send_result(opline)
 							 && (!(op1_info & MAY_HAVE_DTOR) || !(op1_info & MAY_BE_RC1))) {
-#ifndef ZEND_JIT_IR //???
 								i++;
 								res_addr = ZEND_ADDR_MEM_ZVAL(ZREG_RX, (opline+1)->result.var);
 								if (!zend_jit_reuse_ip(&ctx)) {
 									goto jit_failure;
 								}
-#endif
 							}
 						}
 						if (!zend_jit_assign(&ctx, opline,
