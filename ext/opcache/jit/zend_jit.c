@@ -3561,7 +3561,6 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
-#ifndef ZEND_JIT_IR //???
 					case ZEND_PRE_INC_OBJ:
 					case ZEND_PRE_DEC_OBJ:
 					case ZEND_POST_INC_OBJ:
@@ -3606,7 +3605,6 @@ static int zend_jit(const zend_op_array *op_array, zend_ssa *ssa, const zend_op 
 							goto jit_failure;
 						}
 						goto done;
-#endif
 					case ZEND_ASSIGN_OBJ_OP:
 						if (opline->result_type != IS_UNUSED) {
 							break;
