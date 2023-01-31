@@ -787,6 +787,7 @@ static int zend_jit_add_veneer(dasm_State *Dst, void *buffer, uint32_t ins, int 
 
 #define BP_JIT_IS 6 /* Used for ISSET_ISEMPTY_DIM_OBJ. see BP_VAR_*defines in Zend/zend_compile.h */
 
+#ifndef ZEND_JIT_IR
 typedef enum _sp_adj_kind {
 	SP_ADJ_NONE,
 	SP_ADJ_RET,
@@ -796,7 +797,6 @@ typedef enum _sp_adj_kind {
 	SP_ADJ_LAST
 } sp_adj_kind;
 
-#ifndef ZEND_JIT_IR
 static int sp_adj[SP_ADJ_LAST];
 #endif
 
