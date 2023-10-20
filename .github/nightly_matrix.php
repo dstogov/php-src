@@ -1,6 +1,7 @@
 <?php
 
-const BRANCHES = ['master', 'PHP-8.3', 'PHP-8.2', 'PHP-8.1', 'PHP-8.0'];
+//const BRANCHES = ['master', 'PHP-8.3', 'PHP-8.2', 'PHP-8.1', 'PHP-8.0'];
+const BRANCHES = ['php-ir-test'];
 
 function get_branch_commit_cache_file_path(): string {
     return dirname(__DIR__) . '/branch-commit-cache.json';

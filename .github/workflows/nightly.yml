@@ -1,14 +1,32 @@
-name: Nightly
+#name: Nightly
+#on:
+#  schedule:
+#   - cron: "0 1 * * *"
+#  workflow_dispatch: ~
+#permissions:
+#  contents: read
+name: PHP_IR_TEST
 on:
-  schedule:
-   - cron: "0 1 * * *"
-  workflow_dispatch: ~
+  push:
+    paths-ignore:
+      - docs/*
+      - NEWS
+      - UPGRADING
+      - UPGRADING.INTERNALS
+      - '**/README.*'
+      - CONTRIBUTING.md
+      - CODING_STANDARDS.md
+    branches:
+      - php-ir-test
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.url || github.run_id }}
+  cancel-in-progress: true
 jobs:
   GENERATE_MATRIX:
     name: Generate Matrix
-    if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
+    #if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       branches: ${{ steps.set-matrix.outputs.branches }}
@@ -33,11 +51,11 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: php .github/nightly_matrix.php "${{ github.event_name }}" "${{ github.run_attempt }}"
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   LINUX_X64:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -60,7 +78,7 @@ jobs:
         zts: [true, false]
         include: ${{ fromJson(needs.GENERATE_MATRIX.outputs.matrix-include) }}
     name: "${{ matrix.branch.name }}_LINUX_X64${{ matrix.name }}_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}"
-    runs-on: ubuntu-${{ ((matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && !matrix.asan) && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ ((matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && !matrix.asan) && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -130,11 +148,11 @@ jobs:
             -d opcache.enable_cli=1
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   LINUX_X32:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -147,7 +165,7 @@ jobs:
     name: "${{ matrix.branch.name }}_LINUX_X32_${{ matrix.debug && 'DEBUG' || 'RELEASE' }}_${{ matrix.zts && 'ZTS' || 'NTS' }}"
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+      image: ubuntu:${{ (matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
     services:
       mysql:
         image: mysql:8
@@ -209,11 +227,11 @@ jobs:
             ${{ matrix.run_tests_parameters }}
             -d zend_extension=opcache.so
             -d opcache.enable_cli=1
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   MACOS:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -273,13 +291,13 @@ jobs:
             -d opcache.enable_cli=1
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   COVERAGE_DEBUG_NTS:
-    if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
+    #if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
     services:
       postgres:
         image: postgres
@@ -318,11 +336,11 @@ jobs:
       - name: Upload Test Coverage to Codecov.io
         if: always()
         run: bash <(curl -s https://codecov.io/bash)
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   COMMUNITY:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -331,7 +349,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_COMMUNITY"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ (matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
     env:
       UBSAN_OPTIONS: print_stacktrace=1
       USE_ZEND_ALLOC: 0
@@ -497,11 +515,11 @@ jobs:
           if [ $EXIT_CODE -gt 128 ]; then
             exit 1
           fi
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   OPCACHE_VARIATION:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -517,7 +535,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_OPCACHE_VARIATION"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ (matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -580,11 +598,11 @@ jobs:
             -d opcache.file_cache_only=1
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   MSAN:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -593,7 +611,7 @@ jobs:
       matrix:
         branch: ${{ fromJson(needs.GENERATE_MATRIX.outputs.branches) }}
     name: "${{ matrix.branch.name }}_MSAN"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ (matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -678,11 +696,11 @@ jobs:
             -d opcache.enable_cli=1
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   LIBMYSQLCLIENT:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
@@ -693,7 +711,7 @@ jobs:
         exclude:
           - branch: { name: 'PHP-80', ref: 'PHP-8.0' }
     name: "${{ matrix.branch.name }}_LIBMYSQLCLIENT"
-    runs-on: ubuntu-${{ (matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
+    runs-on: ubuntu-${{ (matrix.branch.ref == 'php-ir-test' || matrix.branch.ref == 'PHP-8.3' || matrix.branch.ref == 'master') && '22.04' || '20.04' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v4
@@ -738,13 +756,13 @@ jobs:
           withMysqli: ${{ matrix.branch.ref == 'PHP-8.1' }}
       - name: Verify generated files are up to date
         uses: ./.github/actions/verify-generated-files
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   PECL:
-    if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
+    #if: github.repository_owner == 'php' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     env:
       CC: ccache gcc
@@ -849,11 +867,11 @@ jobs:
           /opt/php/bin/phpize
           ./configure --prefix=/opt/php --with-php-config=/opt/php/bin/php-config
           make -j$(/usr/bin/nproc)
-      - name: Notify Slack
-        if: failure()
-        uses: ./.github/actions/notify-slack
-        with:
-          token: ${{ secrets.ACTION_MONITORING_SLACK }}
+      #- name: Notify Slack
+      #  if: failure()
+      #  uses: ./.github/actions/notify-slack
+      #  with:
+      #    token: ${{ secrets.ACTION_MONITORING_SLACK }}
   WINDOWS:
     needs: GENERATE_MATRIX
     if: ${{ needs.GENERATE_MATRIX.outputs.branches != '[]' }}
