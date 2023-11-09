@@ -6867,10 +6867,10 @@ done:
 					}
 					SET_STACK_TYPE(stack, i, type, 1);
 				} else if (type != IS_UNKNOWN && type != STACK_MEM_TYPE(stack, i)) {
-					if (!zend_jit_store_type(jit, i, type)) {
-						return 0;
-					}
-					SET_STACK_TYPE(stack, i, type, 1);
+//					if (!zend_jit_store_type(jit, i, type)) {
+//						return 0;
+//					}
+//					SET_STACK_TYPE(stack, i, type, 1);
 				}
 				CLEAR_STACK_REF(stack, i);
 			}
