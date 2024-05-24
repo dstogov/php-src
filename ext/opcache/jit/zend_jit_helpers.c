@@ -2630,6 +2630,12 @@ static HashTable *ZEND_FASTCALL zend_jit_zval_array_dup(zval *arr)
 	return ht;
 }
 
+static HashTable *ZEND_FASTCALL zend_jit_array_dup(HashTable *ht)
+{
+	GC_TRY_DELREF(ht);
+	return zend_array_dup(ht);
+}
+
 static zend_array *ZEND_FASTCALL zend_jit_add_arrays_helper(zend_array *op1, zend_array *op2)
 {
 	zend_array *res;

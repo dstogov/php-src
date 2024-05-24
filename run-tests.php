@@ -1407,7 +1407,7 @@ function run_all_tests_parallel(array $test_files, array $env, ?string $redir_te
     $startTime = microtime(true);
     for ($i = 1; $i <= $workers; $i++) {
         $proc = proc_open(
-            [$thisPHP, $thisScript],
+            [$thisPHP, "-d opcache.jit=0", $thisScript],
             [], // Inherit our stdin, stdout and stderr
             $pipes,
             null,

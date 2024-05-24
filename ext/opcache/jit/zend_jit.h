@@ -181,6 +181,8 @@ ZEND_EXT_API void zend_jit_restart(void);
 #define ZREG_ZVAL_ADDREF    (4<<4)
 #define ZREG_THIS           (5<<4)
 
+#define ZREG_GC_ADDREF      (1<<7)
+
 #define ZREG_NONE           -1
 
 #endif /* HAVE_JIT_H */
