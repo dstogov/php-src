@@ -5666,8 +5666,8 @@ static int zend_jit_add_arrays(zend_jit_ctx *jit, const zend_op *opline, uint32_
 	ref = ir_CALL_2(IR_ADDR, ir_CONST_FC_FUNC(zend_jit_add_arrays_helper), arg1, arg2);
 	jit_set_Z_PTR(jit, res_addr, ref);
 	jit_set_Z_TYPE_INFO(jit, res_addr, IS_ARRAY_EX);
-	jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, opline);
-	jit_FREE_OP(jit, opline->op2_type, opline->op2, op2_info, opline);
+	jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, opline);
+	jit_FREE_OP_ex(jit, opline->op2_type, opline->op2, op2_info, op2_addr, opline);
 	return 1;
 }
 
@@ -11108,15 +11108,9 @@ static int zend_jit_return(zend_jit_ctx *jit, const zend_op *opline, const zend_
 	if ((opline->op1_type & (IS_VAR|IS_TMP_VAR)) &&
 	    (op1_info & (MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 
-	    ir_ref type_info_ref = IR_UNUSED;
-
-		/* GC_TYPE_INFO should be loaded before EX(return_value) value check to prevent IR GCM failure */
+		/* PTR should be loaded before EX(return_value) value check to prevent IR GCM failure */
 		if (return_value_used != 1) {
-			if (op1_info & ((MAY_BE_UNDEF|MAY_BE_ANY|MAY_BE_REF)-(MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
-				if (Z_MODE(op1_addr) == IS_REG) {
-					type_info_ref = jit_GC_TYPE_INFO(jit, jit_Z_PTR(jit, op1_addr));
-				}
-			}
+			ref = jit_Z_PTR(jit, op1_addr);
 		}
 
 		if (return_value_used == -1) {
@@ -11127,7 +11121,7 @@ static int zend_jit_return(zend_jit_ctx *jit, const zend_op *opline, const zend_
 			if (op1_info & ((MAY_BE_UNDEF|MAY_BE_ANY|MAY_BE_REF)-(MAY_BE_OBJECT|MAY_BE_RESOURCE))) {
 				if (Z_MODE(op1_addr) == IS_REG) {
 					ir_ref if_immutable = ir_IF(ir_AND_U32(
-						type_info_ref,
+						jit_GC_TYPE_INFO(jit, ref),
 						ir_CONST_U32(GC_IMMUTABLE)));
 					ir_IF_TRUE(if_immutable);
 					ir_END_list(jit->return_inputs);
@@ -11139,7 +11133,6 @@ static int zend_jit_return(zend_jit_ctx *jit, const zend_op *opline, const zend_
 					ir_IF_TRUE(if_refcounted);
 				}
 			}
-			ref = jit_Z_PTR(jit, op1_addr);
 			refcount = jit_GC_DELREF(jit, ref);
 
 			if (RC_MAY_BE_1(op1_info)) {
@@ -14865,7 +14858,7 @@ static int zend_jit_assign_obj(zend_jit_ctx         *jit,
 		if (val_info & (MAY_BE_REF|MAY_BE_STRING|MAY_BE_ARRAY|MAY_BE_OBJECT|MAY_BE_RESOURCE)) {
 			val_info |= MAY_BE_RC1|MAY_BE_RCN;
 		}
-		jit_FREE_OP(jit, (opline+1)->op1_type, (opline+1)->op1, val_info, opline);
+		jit_FREE_OP_ex(jit, (opline+1)->op1_type, (opline+1)->op1, val_info, val_addr, opline);
 
 		if (delayed_end_input) {
 			ir_MERGE_WITH(delayed_end_input);
@@ -14873,7 +14866,7 @@ static int zend_jit_assign_obj(zend_jit_ctx         *jit,
 	}
 
 	if (opline->op1_type != IS_UNUSED && !delayed_fetch_this && !op1_indirect) {
-		jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, opline);
+		jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, opline);
 	}
 
 	if (may_throw) {
@@ -15304,13 +15297,13 @@ long_math:
 	}
 
 	// JIT: FREE_OP_DATA();
-	jit_FREE_OP(jit, (opline+1)->op1_type, (opline+1)->op1, val_info, opline);
+	jit_FREE_OP_ex(jit, (opline+1)->op1_type, (opline+1)->op1, val_info, val_addr, opline);
 
 	if (opline->op1_type != IS_UNUSED && !delayed_fetch_this && !op1_indirect) {
 		if ((op1_info & MAY_HAVE_DTOR) && (op1_info & MAY_BE_RC1)) {
 			may_throw = 1;
 		}
-		jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, opline);
+		jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, opline);
 	}
 
 	if (may_throw) {
