@@ -6774,14 +6774,12 @@ static int zend_jit_assign(zend_jit_ctx  *jit,
 					SET_STACK_TYPE(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(Z_OFFSET(op1_use_addr)), IS_DOUBLE, 1);
 				}
 			} else if ((op1_def_info & MAY_BE_ANY) == MAY_BE_STRING) {
-//???
-ir_TRAP();
+				jit_set_Z_TYPE_INFO(jit, op1_use_addr, zend_jit_ptr_type(jit, jit_Z_PTR(jit, op1_addr), op1_def_info));
 				if (JIT_G(current_frame)) {
 					SET_STACK_TYPE(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(Z_OFFSET(op1_use_addr)), IS_STRING, 1);
 				}
 			} else if ((op1_def_info & MAY_BE_ANY) == MAY_BE_ARRAY) {
-//???
-ir_TRAP();
+				jit_set_Z_TYPE_INFO(jit, op1_use_addr, zend_jit_ptr_type(jit, jit_Z_PTR(jit, op1_addr), op1_def_info));
 				if (JIT_G(current_frame)) {
 					SET_STACK_TYPE(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(Z_OFFSET(op1_use_addr)), IS_ARRAY, 1);
 				}
@@ -17265,6 +17263,7 @@ static bool zend_jit_var_supports_reg(const zend_op_array *op_array, zend_ssa *s
 	if (((ssa->var_info[var].type & (MAY_BE_ANY|MAY_BE_UNDEF|MAY_BE_REF)) == MAY_BE_STRING) ||
 	    ((ssa->var_info[var].type & (MAY_BE_ANY|MAY_BE_UNDEF|MAY_BE_REF)) == MAY_BE_ARRAY) ||
 	    ((ssa->var_info[var].type & (MAY_BE_ANY|MAY_BE_UNDEF|MAY_BE_REF)) == MAY_BE_OBJECT)) {
+#if 1 //???
 		/* Don't allocate registers for refcouted CVs used for assignment (no_val use) */
 	    if (ssa->vars[var].var < op_array->last_var) {
 			int i, j = ssa->vars[var].var;
@@ -17276,6 +17275,7 @@ static bool zend_jit_var_supports_reg(const zend_op_array *op_array, zend_ssa *s
 				}
 			}
 		}
+#endif
 		return 1;
 	}
 
