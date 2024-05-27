@@ -12799,7 +12799,7 @@ static int zend_jit_fetch_dim(zend_jit_ctx   *jit,
 
 	op1_addr = zend_jit_prepare_array_update(jit, opline, op1_info, op1_addr, &if_type, &ht_ref, &may_throw);
 
-	if (op1_addr != op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(orig_op1_addr) == IS_REG)) {
+	if (op1_addr != op1_def_addr && op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(orig_op1_addr) == IS_REG)) {
 //???	if (op1_addr != op1_def_addr) {// && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(op1_addr) == IS_REG)) {
 		if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
 			return 0;
@@ -13183,15 +13183,7 @@ static int zend_jit_assign_dim(zend_jit_ctx  *jit,
 {
 	ir_ref if_type = IR_UNUSED;
 	ir_ref end_inputs = IR_UNUSED, ht_ref;
-
-	if (op1_addr != op1_def_addr && op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(op1_addr) == IS_REG)) {
-		if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
-			return 0;
-		}
-		if (Z_MODE(op1_def_addr) == IS_REG && Z_MODE(op1_addr) != IS_REG) {
-			op1_addr = op1_def_addr;
-		}
-	}
+	zend_jit_addr orig_op1_addr = op1_addr;
 
 	if (op3_addr != op3_def_addr && op3_def_addr) {
 		if (!zend_jit_update_regs(jit, (opline+1)->op1.var, op3_addr, op3_def_addr, val_info)) {
@@ -13216,6 +13208,23 @@ static int zend_jit_assign_dim(zend_jit_ctx  *jit,
 	}
 
 	op1_addr = zend_jit_prepare_array_update(jit, opline, op1_info, op1_addr, &if_type, &ht_ref, &may_throw);
+
+	if (op1_addr != op1_def_addr && op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(orig_op1_addr) == IS_REG)) {
+//???	if (op1_addr != op1_def_addr) {// && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(op1_addr) == IS_REG)) {
+		if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
+			return 0;
+		}
+		if (Z_MODE(op1_def_addr) == IS_REG) {
+			if (Z_MODE(op1_addr) != IS_REG) {
+				op1_addr = op1_def_addr;
+			}
+			if (JIT_G(current_frame)) {
+				SET_STACK_REF_EX(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(opline->op1.var),
+					jit->ra[Z_SSA_VAR(op1_def_addr)].ref,
+					jit->ra[Z_SSA_VAR(op1_def_addr)].flags & ZREG_STORE);
+			}
+		}
+	}
 
 	if (op1_info & (MAY_BE_UNDEF|MAY_BE_NULL|MAY_BE_ARRAY)) {
 		if (opline->op2_type == IS_UNUSED) {
@@ -13368,23 +13377,32 @@ static int zend_jit_assign_dim_op(zend_jit_ctx   *jit,
 	ir_ref if_type = IS_UNUSED;
 	ir_ref end_inputs = IR_UNUSED, ht_ref;
 	bool emit_fast_path = 1;
+	zend_jit_addr orig_op1_addr = op1_addr;
 
 	ZEND_ASSERT(opline->result_type == IS_UNUSED);
-
-	if (op1_addr != op1_def_addr && op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(op1_addr) == IS_REG)) {
-		if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
-			return 0;
-		}
-		if (Z_MODE(op1_def_addr) == IS_REG && Z_MODE(op1_addr) != IS_REG) {
-			op1_addr = op1_def_addr;
-		}
-	}
 
 	if (may_throw) {
 		jit_SET_EX_OPLINE(jit, opline);
 	}
 
 	op1_addr = zend_jit_prepare_array_update(jit, opline, op1_info, op1_addr, &if_type, &ht_ref, &may_throw);
+
+	if (op1_addr != op1_def_addr && op1_def_addr && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(orig_op1_addr) == IS_REG)) {
+//???	if (op1_addr != op1_def_addr) {// && (Z_MODE(op1_def_addr) == IS_REG || Z_MODE(op1_addr) == IS_REG)) {
+		if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
+			return 0;
+		}
+		if (Z_MODE(op1_def_addr) == IS_REG) {
+			if (Z_MODE(op1_addr) != IS_REG) {
+				op1_addr = op1_def_addr;
+			}
+			if (JIT_G(current_frame)) {
+				SET_STACK_REF_EX(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(opline->op1.var),
+					jit->ra[Z_SSA_VAR(op1_def_addr)].ref,
+					jit->ra[Z_SSA_VAR(op1_def_addr)].flags & ZREG_STORE);
+			}
+		}
+	}
 
 	if (op1_info & (MAY_BE_UNDEF|MAY_BE_NULL|MAY_BE_ARRAY)) {
 		uint32_t var_def_info = zend_array_element_type(op1_def_info, opline->op1_type, 1, 0);
@@ -17266,9 +17284,9 @@ static bool zend_jit_var_supports_reg(const zend_op_array *op_array, zend_ssa *s
 #if 1 //???
 		/* Don't allocate registers for refcouted CVs used for assignment (no_val use) */
 	    if (ssa->vars[var].var < op_array->last_var) {
-			int i, j = ssa->vars[var].var;
+			int i, var_num = ssa->vars[var].var;
 			for (i = 0; i < ssa->vars_count; i++) {
-				if (ssa->vars[i].var == j) {
+				if (ssa->vars[i].var == var_num) {
 					if (ssa->vars[i].no_val) {
 						return 0;
 					}
@@ -17279,6 +17297,25 @@ static bool zend_jit_var_supports_reg(const zend_op_array *op_array, zend_ssa *s
 		return 1;
 	}
 
+	return 0;
+}
+
+static bool zend_jit_var_used_in_live_ranges(const zend_op_array *op_array, const zend_op *opline, zend_ssa *ssa, int var)
+{
+	if (op_array->last_live_range
+	 && ssa->vars[var].var >= op_array->last_var
+	 && ssa->vars[var].definition >= 0
+	 && ssa->ops[ssa->vars[var].definition].result_def == var) {
+		/* Don't allocate registers for TMPs used in live_ranges */
+		int op_num = (opline - op_array->opcodes) + 1;
+		int i, var_num = EX_NUM_TO_VAR(ssa->vars[var].var);
+		for (i = 0; i < op_array->last_live_range; i++) {
+			const zend_live_range *range = &op_array->live_range[i];
+			if (op_num == range->start && var_num == (range->var & ~ZEND_LIVE_MASK)) {
+				return 1;
+			}
+		}
+	}
 	return 0;
 }
 

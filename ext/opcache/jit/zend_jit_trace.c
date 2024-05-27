@@ -2954,7 +2954,8 @@ static zend_jit_reg_var* zend_jit_trace_allocate_registers(zend_jit_trace_rec *t
 				 && (ssa->vars[ssa_op->result_def].use_chain >= 0
 			      || ssa->vars[ssa_op->result_def].phi_use_chain)
 				 && ssa->vars[ssa_op->result_def].alias == NO_ALIAS
-				 && zend_jit_var_supports_reg(op_array, ssa, ssa_op->result_def)) {
+				 && zend_jit_var_supports_reg(op_array, ssa, ssa_op->result_def)
+				 && !zend_jit_var_used_in_live_ranges(op_array, opline, ssa, ssa_op->result_def)) {
 					if (!(ssa->var_info[ssa_op->result_def].type & MAY_BE_GUARD)
 					 || opline->opcode == ZEND_PRE_INC
 					 || opline->opcode == ZEND_PRE_DEC
@@ -5101,9 +5102,16 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 						if (ssa_op->op2_def >= 0
 						 && Z_MODE(op2_addr) == IS_REG
 						 && ssa->vars[ssa_op->op2_def].no_val) {
-							uint8_t type = (op2_info & MAY_BE_LONG) ? IS_LONG : IS_DOUBLE;
+							uint8_t type;
 							uint32_t var_num = EX_VAR_TO_NUM(opline->op2.var);
 
+							if (op2_info & MAY_BE_LONG) {
+								type = IS_LONG;
+							} else if (op2_info & MAY_BE_DOUBLE) {
+								type = IS_DOUBLE;
+							} else {
+								ZEND_UNREACHABLE();
+							}
 							if (STACK_MEM_TYPE(stack, var_num) != type
 							 && ssa->vars[ssa_op->op2_def].use_chain < 0
 							 && !ssa->vars[ssa_op->op2_def].phi_use_chain) {
@@ -5154,9 +5162,16 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 						if (ssa_op->op1_def >= 0
 						 && Z_MODE(op1_addr) == IS_REG
 						 && ssa->vars[ssa_op->op1_def].no_val) {
-							uint8_t type = (op1_info & MAY_BE_LONG) ? IS_LONG : IS_DOUBLE;
+							uint8_t type;
 							uint32_t var_num = EX_VAR_TO_NUM(opline->op1.var);
 
+							if (op1_info & MAY_BE_LONG) {
+								type = IS_LONG;
+							} else if (op1_info & MAY_BE_DOUBLE) {
+								type = IS_DOUBLE;
+							} else {
+								ZEND_UNREACHABLE();
+							}
 							if (STACK_MEM_TYPE(stack, var_num) != type
 							 && ssa->vars[ssa_op->op1_def].use_chain < 0
 							 && !ssa->vars[ssa_op->op1_def].phi_use_chain) {
@@ -5251,9 +5266,16 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 						if (ssa_op->op1_def >= 0
 						 && Z_MODE(op1_addr) == IS_REG
 						 && ssa->vars[ssa_op->op1_def].no_val) {
-							uint8_t type = (op1_info & MAY_BE_LONG) ? IS_LONG : IS_DOUBLE;
+							uint8_t type;
 							uint32_t var_num = EX_VAR_TO_NUM(opline->op1.var);
 
+							if (op1_info & MAY_BE_LONG) {
+								type = IS_LONG;
+							} else if (op1_info & MAY_BE_DOUBLE) {
+								type = IS_DOUBLE;
+							} else {
+								ZEND_UNREACHABLE();
+							}
 							if (STACK_MEM_TYPE(stack, var_num) != type
 							 && ssa->vars[ssa_op->op1_def].use_chain < 0
 							 && !ssa->vars[ssa_op->op1_def].phi_use_chain) {
