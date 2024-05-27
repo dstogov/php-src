@@ -2955,7 +2955,8 @@ static zend_jit_reg_var* zend_jit_trace_allocate_registers(zend_jit_trace_rec *t
 			      || ssa->vars[ssa_op->result_def].phi_use_chain)
 				 && ssa->vars[ssa_op->result_def].alias == NO_ALIAS
 				 && zend_jit_var_supports_reg(op_array, ssa, ssa_op->result_def)
-				 && !zend_jit_var_used_in_live_ranges(op_array, opline, ssa, ssa_op->result_def)) {
+				 && ((ssa->var_info[ssa_op->result_def].type & (MAY_BE_LONG|MAY_BE_DOUBLE))
+				  || !zend_jit_var_used_in_live_ranges(op_array, opline, ssa, ssa_op->result_def))) {
 					if (!(ssa->var_info[ssa_op->result_def].type & MAY_BE_GUARD)
 					 || opline->opcode == ZEND_PRE_INC
 					 || opline->opcode == ZEND_PRE_DEC
