@@ -502,8 +502,9 @@ typedef struct _zend_jit_trace_stack {
 #define ZEND_JIT_TRACE_USES_INITIAL_IP (1<<2)
 
 typedef union _zend_jit_exit_const {
-	int64_t   i;
-	double    d;
+	int64_t           i;
+	double            d;
+	zend_refcounted  *p;
 } zend_jit_exit_const;
 
 typedef struct _zend_jit_trace_info {
