@@ -6590,7 +6590,8 @@ done:
 						type = STACK_TYPE(stack, EX_VAR_TO_NUM(opline->op1.var));
 					}
 //???
-if (type != STACK_TYPE(stack, EX_VAR_TO_NUM(opline->op1.var))) {
+if (type != STACK_TYPE(stack, EX_VAR_TO_NUM(opline->op1.var))
+ || type == IS_LONG || type == IS_DOUBLE) {
 					SET_STACK_TYPE(stack, EX_VAR_TO_NUM(opline->op1.var), type,
 						(gen_handler || type == IS_UNKNOWN || !ra ||
 							(!RA_HAS_REG(ssa_op->op1_def) &&
