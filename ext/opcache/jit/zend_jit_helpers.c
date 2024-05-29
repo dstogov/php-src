@@ -1844,7 +1844,7 @@ static void ZEND_FASTCALL zend_jit_verify_return_slow(zval *arg, const zend_op_a
 	}
 }
 
-static void ZEND_FASTCALL zend_jit_fetch_obj_r_slow(zend_object *zobj)
+static zval* ZEND_FASTCALL zend_jit_fetch_obj_r_slow(zend_object *zobj)
 {
 	zval *retval;
 	zend_execute_data *execute_data = EG(current_execute_data);
@@ -1859,9 +1859,10 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_r_slow(zend_object *zobj)
 	} else if (UNEXPECTED(Z_ISREF_P(retval))) {
 		zend_unwrap_reference(retval);
 	}
+	return result;
 }
 
-static void ZEND_FASTCALL zend_jit_fetch_obj_r_dynamic(zend_object *zobj, intptr_t prop_offset)
+static zval* ZEND_FASTCALL zend_jit_fetch_obj_r_dynamic(zend_object *zobj, intptr_t prop_offset)
 {
 	if (zobj->properties) {
 		zval *retval;
@@ -1882,7 +1883,7 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_r_dynamic(zend_object *zobj, intptr
 			         EXPECTED(p->key != NULL) &&
 			         EXPECTED(zend_string_equal_content(p->key, name)))) {
 					ZVAL_COPY_DEREF(result, &p->val);
-					return;
+					return result;
 				}
 			}
 			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_DYNAMIC_PROPERTY_OFFSET);
@@ -1894,13 +1895,13 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_r_dynamic(zend_object *zobj, intptr
 			intptr_t idx = (char*)retval - (char*)zobj->properties->arData;
 			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_ENCODE_DYN_PROP_OFFSET(idx));
 			ZVAL_COPY_DEREF(result, retval);
-			return;
+			return result;
 		}
 	}
-	zend_jit_fetch_obj_r_slow(zobj);
+	return zend_jit_fetch_obj_r_slow(zobj);
 }
 
-static void ZEND_FASTCALL zend_jit_fetch_obj_is_slow(zend_object *zobj)
+static zval* ZEND_FASTCALL zend_jit_fetch_obj_is_slow(zend_object *zobj)
 {
 	zval *retval;
 	zend_execute_data *execute_data = EG(current_execute_data);
@@ -1915,9 +1916,10 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_is_slow(zend_object *zobj)
 	} else if (UNEXPECTED(Z_ISREF_P(retval))) {
 		zend_unwrap_reference(retval);
 	}
+	return result;
 }
 
-static void ZEND_FASTCALL zend_jit_fetch_obj_is_dynamic(zend_object *zobj, intptr_t prop_offset)
+static zval* ZEND_FASTCALL zend_jit_fetch_obj_is_dynamic(zend_object *zobj, intptr_t prop_offset)
 {
 	if (zobj->properties) {
 		zval *retval;
@@ -1938,7 +1940,7 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_is_dynamic(zend_object *zobj, intpt
 			         EXPECTED(p->key != NULL) &&
 			         EXPECTED(zend_string_equal_content(p->key, name)))) {
 					ZVAL_COPY_DEREF(result, &p->val);
-					return;
+					return result;
 				}
 			}
 			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_DYNAMIC_PROPERTY_OFFSET);
@@ -1950,114 +1952,10 @@ static void ZEND_FASTCALL zend_jit_fetch_obj_is_dynamic(zend_object *zobj, intpt
 			intptr_t idx = (char*)retval - (char*)zobj->properties->arData;
 			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_ENCODE_DYN_PROP_OFFSET(idx));
 			ZVAL_COPY_DEREF(result, retval);
-			return;
+			return result;
 		}
 	}
-	zend_jit_fetch_obj_is_slow(zobj);
-}
-
-static zval* ZEND_FASTCALL zend_jit_fetch_obj_r_slow_ex(zend_object *zobj)
-{
-	zval *retval;
-	zend_execute_data *execute_data = EG(current_execute_data);
-	const zend_op *opline = EX(opline);
-	zend_string *name = Z_STR_P(RT_CONSTANT(opline, opline->op2));
-	zval *result = EX_VAR(opline->result.var);
-	void **cache_slot = CACHE_ADDR(opline->extended_value & ~ZEND_FETCH_OBJ_FLAGS);
-
-	retval = zobj->handlers->read_property(zobj, name, BP_VAR_R, cache_slot, result);
-	if (retval == result && UNEXPECTED(Z_ISREF_P(retval))) {
-		zend_unwrap_reference(retval);
-	}
-	return retval;
-}
-
-static zval* ZEND_FASTCALL zend_jit_fetch_obj_r_dynamic_ex(zend_object *zobj, intptr_t prop_offset)
-{
-	if (zobj->properties) {
-		zval *retval;
-		zend_execute_data *execute_data = EG(current_execute_data);
-		const zend_op *opline = EX(opline);
-		zend_string *name = Z_STR_P(RT_CONSTANT(opline, opline->op2));
-		void **cache_slot = CACHE_ADDR(opline->extended_value & ~ZEND_FETCH_OBJ_FLAGS);
-
-		if (!IS_UNKNOWN_DYNAMIC_PROPERTY_OFFSET(prop_offset)) {
-			intptr_t idx = ZEND_DECODE_DYN_PROP_OFFSET(prop_offset);
-
-			if (EXPECTED(idx < zobj->properties->nNumUsed * sizeof(Bucket))) {
-				Bucket *p = (Bucket*)((char*)zobj->properties->arData + idx);
-
-				if (EXPECTED(p->key == name) ||
-			        (EXPECTED(p->h == ZSTR_H(name)) &&
-			         EXPECTED(p->key != NULL) &&
-			         EXPECTED(zend_string_equal_content(p->key, name)))) {
-					return &p->val;
-				}
-			}
-			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_DYNAMIC_PROPERTY_OFFSET);
-		}
-
-		retval = zend_hash_find_known_hash(zobj->properties, name);
-
-		if (EXPECTED(retval)) {
-			intptr_t idx = (char*)retval - (char*)zobj->properties->arData;
-			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_ENCODE_DYN_PROP_OFFSET(idx));
-			return retval;
-		}
-	}
-	return zend_jit_fetch_obj_r_slow_ex(zobj);
-}
-
-static zval* ZEND_FASTCALL zend_jit_fetch_obj_is_slow_ex(zend_object *zobj)
-{
-	zval *retval;
-	zend_execute_data *execute_data = EG(current_execute_data);
-	const zend_op *opline = EX(opline);
-	zend_string *name = Z_STR_P(RT_CONSTANT(opline, opline->op2));
-	zval *result = EX_VAR(opline->result.var);
-	void **cache_slot = CACHE_ADDR(opline->extended_value & ~ZEND_FETCH_OBJ_FLAGS);
-
-	retval = zobj->handlers->read_property(zobj, name, BP_VAR_IS, cache_slot, result);
-	if (retval == result && UNEXPECTED(Z_ISREF_P(retval))) {
-		zend_unwrap_reference(retval);
-	}
-	return retval;
-}
-
-static zval* ZEND_FASTCALL zend_jit_fetch_obj_is_dynamic_ex(zend_object *zobj, intptr_t prop_offset)
-{
-	if (zobj->properties) {
-		zval *retval;
-		zend_execute_data *execute_data = EG(current_execute_data);
-		const zend_op *opline = EX(opline);
-		zend_string *name = Z_STR_P(RT_CONSTANT(opline, opline->op2));
-		void **cache_slot = CACHE_ADDR(opline->extended_value & ~ZEND_FETCH_OBJ_FLAGS);
-
-		if (!IS_UNKNOWN_DYNAMIC_PROPERTY_OFFSET(prop_offset)) {
-			intptr_t idx = ZEND_DECODE_DYN_PROP_OFFSET(prop_offset);
-
-			if (EXPECTED(idx < zobj->properties->nNumUsed * sizeof(Bucket))) {
-				Bucket *p = (Bucket*)((char*)zobj->properties->arData + idx);
-
-				if (EXPECTED(p->key == name) ||
-			        (EXPECTED(p->h == ZSTR_H(name)) &&
-			         EXPECTED(p->key != NULL) &&
-			         EXPECTED(zend_string_equal_content(p->key, name)))) {
-					return &p->val;
-				}
-			}
-			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_DYNAMIC_PROPERTY_OFFSET);
-		}
-
-		retval = zend_hash_find_known_hash(zobj->properties, name);
-
-		if (EXPECTED(retval)) {
-			intptr_t idx = (char*)retval - (char*)zobj->properties->arData;
-			CACHE_PTR_EX(cache_slot + 1, (void*)ZEND_ENCODE_DYN_PROP_OFFSET(idx));
-			return retval;
-		}
-	}
-	return zend_jit_fetch_obj_is_slow_ex(zobj);
+	return zend_jit_fetch_obj_is_slow(zobj);
 }
 
 static zend_always_inline bool promotes_to_array(zval *val) {

@@ -7970,8 +7970,11 @@ static void zend_jit_dump_exit_info(zend_jit_trace_info *t)
 					fprintf(stderr, ")");
 				} else if (STACK_REG(stack, j) != ZREG_NONE) {
 					fprintf(stderr, "(%s", zend_reg_name(STACK_REG(stack, j)));
-					if (STACK_FLAGS(stack, j) != 0) {
-						fprintf(stderr, ":%x", STACK_FLAGS(stack, j));
+					if (STACK_FLAGS(stack, j) & ZREG_GC_ADDREF) {
+						fprintf(stderr, ":gc_try_addref");
+					}
+					if ((STACK_FLAGS(stack, j) & ~ZREG_GC_ADDREF) != 0) {
+						fprintf(stderr, ":%x", STACK_FLAGS(stack, j) & ~ZREG_GC_ADDREF);
 					}
 					fprintf(stderr, ")");
 				}
@@ -8566,11 +8569,7 @@ int ZEND_FASTCALL zend_jit_trace_exit(uint32_t exit_num, zend_jit_registers_buf 
 				ZVAL_NULL(EX_VAR_NUM(i));
 				bad_exit = 1;
 			} else {
-//???				if (STACK_FLAGS(stack, i) & ZREG_GC_ADDREF) {
-					ZVAL_COPY(EX_VAR_NUM(i), val);
-//???				} else {
-//???					ZVAL_COPY(EX_VAR_NUM(i), val);
-//???				}
+				ZVAL_COPY(EX_VAR_NUM(i), val);
 			}
 		} else if (STACK_FLAGS(stack, i) & ZREG_SPILL_SLOT) {
 			ZEND_ASSERT(STACK_REG(stack, i) != ZREG_NONE);
@@ -8593,13 +8592,22 @@ int ZEND_FASTCALL zend_jit_trace_exit(uint32_t exit_num, zend_jit_registers_buf 
 			} else if (STACK_TYPE(stack, i) == IS_STRING) {
 				zend_string *ptr = (zend_string*)(uintptr_t)regs->gpr[STACK_REG(stack, i)];
 				ZVAL_STR(EX_VAR_NUM(i), ptr);
+				if (STACK_FLAGS(stack, i) & ZREG_GC_ADDREF) {
+					Z_TRY_ADDREF_P(EX_VAR_NUM(i));
+				}
 			} else if (STACK_TYPE(stack, i) == IS_ARRAY) {
 				zend_array *ptr = (zend_array*)(uintptr_t)regs->gpr[STACK_REG(stack, i)];
 				Z_PTR_P(EX_VAR_NUM(i)) = ptr;
 				Z_TYPE_INFO_P(EX_VAR_NUM(i)) = (GC_FLAGS(ptr) & GC_IMMUTABLE) ? IS_ARRAY : IS_ARRAY_EX;
+				if (STACK_FLAGS(stack, i) & ZREG_GC_ADDREF) {
+					Z_TRY_ADDREF_P(EX_VAR_NUM(i));
+				}
 			} else if (STACK_TYPE(stack, i) == IS_OBJECT) {
 				zend_object *ptr = (zend_object*)(uintptr_t)regs->gpr[STACK_REG(stack, i)];
 				ZVAL_OBJ(EX_VAR_NUM(i), ptr);
+				if (STACK_FLAGS(stack, i) & ZREG_GC_ADDREF) {
+					Z_ADDREF_P(EX_VAR_NUM(i));
+				}
 			} else {
 				ZEND_UNREACHABLE();
 			}
