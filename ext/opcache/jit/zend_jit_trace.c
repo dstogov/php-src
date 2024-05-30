@@ -3493,8 +3493,14 @@ static int zend_jit_trace_deoptimization(
 		} else if (STACK_FLAGS(parent_stack, i) == ZREG_TYPE_ONLY) {
 			uint8_t type = STACK_TYPE(parent_stack, i);
 
-			if (!zend_jit_store_type(jit, i, type)) {
-				return 0;
+			if (type <= IS_DOUBLE) {
+				if (!zend_jit_store_type(jit, i, type)) {
+					return 0;
+				}
+			} else {
+				if (!zend_jit_update_ptr_type(jit, i, type)) {
+					return 0;
+				}
 			}
 			if (stack) {
 				SET_STACK_TYPE(stack, i, type, 1);
@@ -7169,8 +7175,14 @@ if (type != STACK_TYPE(stack, EX_VAR_TO_NUM(opline->op1.var))
 				 && type != IS_UNKNOWN
 				 && type != STACK_MEM_TYPE(stack, i)
 				 && zend_jit_trace_must_store_type(op_array, op_array_ssa, opline - op_array->opcodes, i, type)) {
-					if (!zend_jit_store_type(jit, i, type)) {
-						return 0;
+					if (type <= IS_DOUBLE) {
+						if (!zend_jit_store_type(jit, i, type)) {
+							return 0;
+						}
+					} else {
+						if (!zend_jit_update_ptr_type(jit, i, type)) {
+							return 0;
+						}
 					}
 					SET_STACK_TYPE(stack, i, type, 1);
 				}

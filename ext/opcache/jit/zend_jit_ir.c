@@ -1650,6 +1650,8 @@ static ir_ref zend_jit_ptr_type(zend_jit_ctx *jit, ir_ref ref, uint32_t info)
 	}
 }
 
+
+
 static void jit_ZVAL_COPY(zend_jit_ctx *jit, zend_jit_addr dst, uint32_t dst_info, zend_jit_addr src, uint32_t src_info, bool addref)
 {
 	ir_ref ref = IR_UNUSED;
@@ -4474,6 +4476,15 @@ static int zend_jit_store_type(zend_jit_ctx *jit, int var, uint8_t type)
 
 	ZEND_ASSERT(type <= IS_DOUBLE);
 	jit_set_Z_TYPE_INFO(jit, dst, type);
+	return 1;
+}
+
+static int zend_jit_update_ptr_type(zend_jit_ctx *jit, int var, uint8_t type)
+{
+	uint32_t info = 1 << type;
+	zend_jit_addr addr = ZEND_ADDR_MEM_ZVAL(ZREG_FP, EX_NUM_TO_VAR(var));
+
+	jit_set_Z_TYPE_INFO_ex(jit, addr, zend_jit_ptr_type(jit, jit_Z_PTR(jit, addr), info));
 	return 1;
 }
 
@@ -11194,6 +11205,10 @@ static int zend_jit_return(zend_jit_ctx *jit, const zend_op *opline, const zend_
 				if (Z_MODE(op1_addr) == IS_REG) {
 					zend_jit_addr real_addr = ZEND_ADDR_MEM_ZVAL(ZREG_FP, opline->op1.var);
 					jit_set_Z_TYPE_INFO(jit, real_addr, IS_NULL);
+					if (JIT_G(current_frame)) {
+						CLEAR_STACK_REF(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(opline->op1.var));
+						SET_STACK_TYPE(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(opline->op1.var), IS_UNKNOWN, 1);
+					}
 				} else {
 					jit_set_Z_TYPE_INFO(jit, op1_addr, IS_NULL);
 				}
