@@ -5275,11 +5275,12 @@ static const void *zend_jit_trace(zend_jit_trace_rec *trace_buffer, uint32_t par
 							break;
 						}
 						op1_addr = OP1_REG_ADDR();
-						if (ssa_op->op1_def < 0 || (Z_MODE(op1_addr) == IS_REG && ssa->vars[ssa_op->op1_def].no_val)) {
-							op1_def_addr = op1_addr;
-						} else {
+//???
+//						if (ssa_op->op1_def < 0 || (Z_MODE(op1_addr) == IS_REG && ssa->vars[ssa_op->op1_def].no_val)) {
+//							op1_def_addr = op1_addr;
+//						} else {
 							op1_def_addr = OP1_DEF_REG_ADDR();
-						}
+//						}
 						op1_info = OP1_INFO();
 						CHECK_OP1_TRACE_TYPE();
 						if (!zend_jit_send_var(&ctx, opline, op_array,

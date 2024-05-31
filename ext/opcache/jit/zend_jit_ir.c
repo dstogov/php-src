@@ -6814,6 +6814,10 @@ static int zend_jit_assign(zend_jit_ctx  *jit,
 		}
 	}
 
+	if (JIT_G(current_frame) && (Z_MODE(op1_use_addr) == IS_REG || Z_MODE(op1_addr) != IS_REG)) {
+		CLEAR_STACK_REF(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(opline->op1.var));
+	}
+
 	return 1;
 }
 
@@ -9716,7 +9720,7 @@ static int zend_jit_send_var(zend_jit_ctx *jit, const zend_op *opline, const zen
 					op1_addr, op1_info, 0);
 			}
 		} else {
-			if (op1_addr != op1_def_addr) {
+			if (op1_addr != op1_def_addr && op1_def_addr) {
 				if (!zend_jit_update_regs(jit, opline->op1.var, op1_addr, op1_def_addr, op1_info)) {
 					return 0;
 				}
