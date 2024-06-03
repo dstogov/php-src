@@ -3552,7 +3552,8 @@ static int zend_jit_trace_deoptimization(
 
 				if (!zend_jit_store_reg(jit, 1 << type, i, reg,
 						(STACK_FLAGS(parent_stack, i) & (ZREG_LOAD|ZREG_STORE)) != 0,
-						1/*???STACK_MEM_TYPE(parent_stack, i) != type*/)) {
+						1/*???STACK_MEM_TYPE(parent_stack, i) != type*/,
+						(STACK_FLAGS(parent_stack, i) & ZREG_GC_ADDREF) != 0)) {
 					return 0;
 				}
 				if (stack) {

@@ -4488,7 +4488,7 @@ static int zend_jit_update_ptr_type(zend_jit_ctx *jit, int var, uint8_t type)
 	return 1;
 }
 
-static int zend_jit_store_reg(zend_jit_ctx *jit, uint32_t info, int var, int8_t reg, bool in_mem, bool set_type)
+static int zend_jit_store_reg(zend_jit_ctx *jit, uint32_t info, int var, int8_t reg, bool in_mem, bool set_type, bool addref)
 {
 	zend_jit_addr src;
 	zend_jit_addr dst = ZEND_ADDR_MEM_ZVAL(ZREG_FP, EX_NUM_TO_VAR(var));
@@ -4533,6 +4533,19 @@ static int zend_jit_store_reg(zend_jit_ctx *jit, uint32_t info, int var, int8_t 
 			jit_set_Z_PTR(jit, dst, src);
 			if (set_type) {
 				jit_set_Z_TYPE_INFO_ex(jit, dst, zend_jit_ptr_type(jit, src, info));
+			}
+		}
+		if (addref) {
+			if ((info & MAY_BE_ANY) == MAY_BE_STRING || (info & MAY_BE_ANY) == MAY_BE_ARRAY) {
+				ir_ref if_immutable = ir_IF(
+					ir_AND_U32(jit_GC_TYPE_INFO(jit, src), ir_CONST_U32(GC_IMMUTABLE)));
+				ir_IF_FALSE(if_immutable);
+				jit_GC_ADDREF(jit, src);
+				ir_MERGE_WITH_EMPTY_TRUE(if_immutable);
+			} else if ((info & MAY_BE_ANY) == MAY_BE_OBJECT) {
+				jit_GC_ADDREF(jit, src);
+			} else {
+				ZEND_UNREACHABLE();
 			}
 		}
 	} else {
