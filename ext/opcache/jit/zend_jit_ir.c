@@ -4679,7 +4679,9 @@ static int zend_jit_store_var_if_necessary_ex(zend_jit_ctx *jit, int var, zend_j
 					uint32_t mem_type = STACK_MEM_TYPE(JIT_G(current_frame)->stack, EX_VAR_TO_NUM(var));
 
 					if (mem_type != IS_UNKNOWN
-					 && (info & (MAY_BE_ANY|MAY_BE_REF|MAY_BE_UNDEF)) == (1 << mem_type)) {
+					 && (info & (MAY_BE_ANY|MAY_BE_REF|MAY_BE_UNDEF)) == (1 << mem_type)
+					 && mem_type != IS_STRING
+					 && mem_type != IS_ARRAY) {
 						set_type = 0;
 					}
 				} else {
@@ -14477,9 +14479,14 @@ static int zend_jit_fetch_obj(zend_jit_ctx         *jit,
 		}
 		ir_END_list(end_inputs);
 	} else {
-		if (((res_info & MAY_BE_GUARD) && JIT_G(current_frame) && prop_info)
-		 || Z_MODE(res_addr) == IS_REG) {
+		if (((res_info & MAY_BE_GUARD) && JIT_G(current_frame) && prop_info)) {
 			ir_END_PHI_list(end_values, jit_ZVAL_ADDR(jit, prop_addr));
+		} else if (Z_MODE(res_addr) == IS_REG) {
+			ir_ref if_ref = ir_IF(ir_EQ(jit_Z_TYPE(jit, prop_addr), ir_CONST_U8(IS_REFERENCE)));
+			ir_IF_FALSE(if_ref);
+			ir_END_PHI_list(end_values, jit_ZVAL_ADDR(jit, prop_addr));
+			ir_IF_TRUE(if_ref);
+			ir_END_PHI_list(end_values, ir_ADD_OFFSET(jit_Z_PTR(jit, prop_addr), offsetof(zend_reference, val)));
 		} else {
 			prop_type_ref = jit_Z_TYPE_INFO(jit, prop_addr);
 
