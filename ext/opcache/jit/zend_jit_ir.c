@@ -6713,8 +6713,22 @@ static int zend_jit_assign_to_variable(zend_jit_ctx   *jit,
 			if (real_res_addr) {
 				if (var_def_info & MAY_BE_LONG) {
 					jit_set_Z_LVAL(jit, real_res_addr, jit_Z_LVAL(jit, var_addr));
-				} else {
+				} else if (var_def_info & MAY_BE_DOUBLE) {
 					jit_set_Z_DVAL(jit, real_res_addr, jit_Z_DVAL(jit, var_addr));
+				} else if (var_def_info & (MAY_BE_STRING|MAY_BE_ARRAY)) {
+					ir_ref ref = jit_Z_PTR(jit, var_addr);
+					jit_set_Z_PTR(jit, real_res_addr, ref);
+					ir_ref if_immutable = ir_IF(
+						ir_AND_U32(jit_GC_TYPE_INFO(jit, ref), ir_CONST_U32(GC_IMMUTABLE)));
+					ir_IF_FALSE(if_immutable);
+					jit_GC_ADDREF(jit, ref);
+					ir_MERGE_WITH_EMPTY_TRUE(if_immutable);
+				} else if (var_def_info & MAY_BE_OBJECT) {
+					ir_ref ref = jit_Z_PTR(jit, var_addr);
+					jit_set_Z_PTR(jit, real_res_addr, ref);
+					jit_GC_ADDREF(jit, ref);
+				} else {
+					ZEND_UNREACHABLE();
 				}
 			}
 		} else {
