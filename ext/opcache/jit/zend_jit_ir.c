@@ -7433,9 +7433,9 @@ static int zend_jit_identical(zend_jit_ctx   *jit,
 
 	if (always_true) {
 		if (opline->opcode != ZEND_CASE_STRICT) {
-			jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, opline);
+			jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, opline);
 		}
-		jit_FREE_OP(jit, opline->op2_type, opline->op2, op2_info, opline);
+		jit_FREE_OP_ex(jit, opline->op2_type, opline->op2, op2_info, op2_addr, opline);
 		if (!smart_branch_opcode
 		 || smart_branch_opcode == ZEND_JMPZ_EX
 		 || smart_branch_opcode == ZEND_JMPNZ_EX) {
@@ -7464,9 +7464,9 @@ static int zend_jit_identical(zend_jit_ctx   *jit,
 		return 1;
 	} else if (always_false) {
 		if (opline->opcode != ZEND_CASE_STRICT) {
-			jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, opline);
+			jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, opline);
 		}
-		jit_FREE_OP(jit, opline->op2_type, opline->op2, op2_info, opline);
+		jit_FREE_OP_ex(jit, opline->op2_type, opline->op2, op2_info, op2_addr, opline);
 		if (!smart_branch_opcode
 		 || smart_branch_opcode == ZEND_JMPZ_EX
 		 || smart_branch_opcode == ZEND_JMPNZ_EX) {
@@ -7576,9 +7576,9 @@ static int zend_jit_identical(zend_jit_ctx   *jit,
 			}
 		}
 		if (opline->opcode != ZEND_CASE_STRICT) {
-			jit_FREE_OP(jit, opline->op1_type, opline->op1, op1_info, NULL);
+			jit_FREE_OP_ex(jit, opline->op1_type, opline->op1, op1_info, op1_addr, NULL);
 		}
-		jit_FREE_OP(jit, opline->op2_type, opline->op2, op2_info, NULL);
+		jit_FREE_OP_ex(jit, opline->op2_type, opline->op2, op2_info, op2_addr, NULL);
 		if (may_throw) {
 			zend_jit_check_exception_undef_result(jit, opline);
 		}
