@@ -3481,6 +3481,11 @@ static int zend_jit_trace_deoptimization(
 						constants[STACK_REF(parent_stack, i)].d)) {
 					return 0;
 				}
+			} else if (type == IS_STRING || type == IS_ARRAY || type == IS_OBJECT) {
+				if (!zend_jit_store_const_ptr(jit, i,
+						constants[STACK_REF(parent_stack, i)].p, type)) {
+					return 0;
+				}
 			} else {
 				ZEND_UNREACHABLE();
 			}

@@ -4488,6 +4488,32 @@ static int zend_jit_update_ptr_type(zend_jit_ctx *jit, int var, uint8_t type)
 	return 1;
 }
 
+static int zend_jit_store_const_ptr(zend_jit_ctx *jit, int var, zend_refcounted *val, uint8_t type)
+{
+	zend_jit_addr dst = ZEND_ADDR_MEM_ZVAL(ZREG_FP, EX_NUM_TO_VAR(var));
+	ir_ref src = ir_CONST_ADDR(val);
+
+	if (jit->ra && jit->ra[var].ref == IR_NULL) {
+		zend_jit_def_reg(jit, ZEND_ADDR_REG(var), src);
+	}
+	jit_set_Z_PTR(jit, dst, src);
+	if (!(GC_FLAGS(val) & GC_IMMUTABLE)) {
+		jit_GC_ADDREF(jit, src);
+		if (type == IS_STRING) {
+			jit_set_Z_TYPE_INFO(jit, dst, IS_STRING_EX);
+		} else if (type == IS_ARRAY) {
+			jit_set_Z_TYPE_INFO(jit, dst, IS_ARRAY_EX);
+		} else if (type == IS_OBJECT) {
+			jit_set_Z_TYPE_INFO(jit, dst, IS_OBJECT_EX);
+		} else {
+			ZEND_UNREACHABLE();
+		}
+	} else {
+		jit_set_Z_TYPE_INFO(jit, dst, type);
+	}
+	return 1;
+}
+
 static int zend_jit_store_reg(zend_jit_ctx *jit, uint32_t info, int var, int8_t reg, bool in_mem, bool set_type, bool addref)
 {
 	zend_jit_addr src;
